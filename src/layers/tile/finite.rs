@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use xml::attribute::OwnedAttribute;
 
 use crate::{
@@ -16,8 +17,8 @@ pub struct FiniteTileLayerData {
     tiles: Vec<Option<LayerTileData>>,
 }
 
-impl std::fmt::Debug for FiniteTileLayerData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for FiniteTileLayerData {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("FiniteTileLayerData")
             .field("width", &self.width)
             .field("height", &self.height)

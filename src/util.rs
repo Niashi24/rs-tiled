@@ -122,7 +122,7 @@ macro_rules! process_attr_branches {
         if(&$attr.name.local_name == $attr_pat_opt) {
             $opt_var = Some($opt_expr.map_err(|_|
                 $crate::Error::MalformedAttributes(
-                    concat!("Error parsing optional attribute '", $attr_pat_opt, "'").to_owned()
+                    alloc::borrow::ToOwned::to_owned(concat!("Error parsing optional attribute '", $attr_pat_opt, "'"))
                 )
             )?);
         }
@@ -144,7 +144,7 @@ macro_rules! process_attr_branches {
         if(&$attr.name.local_name == $attr_pat_opt) {
             $opt_var = Some($opt_expr.map_err(|_|
                 $crate::Error::MalformedAttributes(
-                    concat!("Error parsing attribute '", $attr_pat_opt, "'").to_owned()
+                    alloc::borrow::ToOwned::to_owned(concat!("Error parsing attribute '", $attr_pat_opt, "'"))
                 )
             )?);
         }
@@ -167,7 +167,7 @@ macro_rules! handle_attr_branches {
         let $opt_var = $opt_var
             .ok_or_else(||
                 Error::MalformedAttributes(
-                    concat!("Missing attribute: ", $attr_pat_opt).to_owned()
+                    alloc::borrow::ToOwned::to_owned(concat!("Missing attribute: ", $attr_pat_opt))
                 )
             )?;
 
@@ -195,7 +195,7 @@ macro_rules! parse_tag {
                 }
 
                 xml::reader::XmlEvent::EndDocument => {
-                    return Err(Error::PrematureEnd("Document ended before we expected.".to_string()));
+                    return Err(Error::PrematureEnd(alloc::string::String::from("Document ended before we expected.")));
                 }
                 _ => {}
             }
@@ -226,7 +226,7 @@ macro_rules! map_wrapper {
             }
         }
 
-        impl<'map> std::ops::Deref for $name<'map> {
+        impl<'map> core::ops::Deref for $name<'map> {
             type Target = $data_ty;
 
             #[inline]

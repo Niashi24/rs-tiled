@@ -1,11 +1,10 @@
-use std::{path::Path, sync::Arc};
+use alloc::string::String;
+use alloc::vec::Vec;
+use portable_atomic_util::Arc;
 
 use xml::attribute::OwnedAttribute;
 
-use crate::{
-    error::Result, properties::Properties, util::*, Color, Map, MapTilesetGid, ResourceCache,
-    ResourceReader, Tileset,
-};
+use crate::{error::Result, parent, properties::Properties, util::*, Color, Map, MapTilesetGid, ResourceCache, ResourcePath, ResourceReader, Tileset};
 
 mod image;
 pub use image::*;
@@ -72,7 +71,7 @@ impl LayerData {
         attrs: Vec<OwnedAttribute>,
         tag: LayerTag,
         infinite: bool,
-        map_path: &Path,
+        map_path: &ResourcePath,
         tilesets: &[MapTilesetGid],
         for_tileset: Option<Arc<Tileset>>,
         reader: &mut impl ResourceReader,
@@ -118,7 +117,7 @@ impl LayerData {
                     attrs,
                     Some(tilesets),
                     for_tileset,
-                    map_path.parent().ok_or(crate::Error::PathIsNotFile)?,
+                    parent(map_path).ok_or(crate::Error::PathIsNotFile)?,
                     reader,
                     cache,
                 )?;

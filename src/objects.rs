@@ -1,14 +1,13 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
-
+use alloc::borrow::ToOwned;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use hashbrown::HashMap;
+use portable_atomic_util::Arc;
 use xml::attribute::OwnedAttribute;
 
-use crate::{
-    error::{Error, Result},
-    properties::{parse_properties, Properties},
-    template::Template,
-    util::{get_attrs, map_wrapper, parse_tag, XmlEventResult},
-    Color, Gid, MapTilesetGid, ResourceCache, ResourceReader, Tile, TileId, Tileset,
-};
+use crate::{error::{Error, Result}, properties::{ Properties}, template::Template, util::{get_attrs, map_wrapper, parse_tag}, Color, Gid, MapTilesetGid, ResourceCache, ResourcePath, ResourceReader, Tile, TileId, Tileset};
+use crate::properties::parse_properties;
+use crate::util::XmlEventResult;
 
 /// The location of the tileset this tile is in
 ///
@@ -225,7 +224,7 @@ impl ObjectData {
         tilesets: Option<&[MapTilesetGid]>,
         for_tileset: Option<Arc<Tileset>>,
         // Base path is a directory to which all other files are relative to
-        base_path: &Path,
+        base_path: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<ObjectData> {
@@ -254,7 +253,7 @@ impl ObjectData {
         // If the template attribute is there, we need to go fetch the template file
         let template = template
             .map(|template_path: String| {
-                let template_path = base_path.join(Path::new(&template_path));
+                let template_path = base_path.to_owned() + &template_path;
 
                 // Check the cache to see if this template exists
                 let template = if let Some(templ) = cache.get_template(&template_path) {

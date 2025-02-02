@@ -1,23 +1,18 @@
 //! Structures related to Tiled maps.
 
-use std::{
-    collections::HashMap,
-    fmt,
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-};
-
+use alloc::borrow::ToOwned;
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::fmt;
+use core::str::FromStr;
+use hashbrown::HashMap;
+use portable_atomic_util::Arc;
 use xml::attribute::OwnedAttribute;
 
-use crate::{
-    error::{Error, Result},
-    layers::{LayerData, LayerTag},
-    properties::{parse_properties, Color, Properties},
-    tileset::Tileset,
-    util::{get_attrs, parse_tag, XmlEventResult},
-    EmbeddedParseResultType, Layer, ResourceCache, ResourceReader,
-};
+use crate::{error::{Error, Result}, layers::{LayerData, LayerTag}, properties::{Color, Properties}, tileset::Tileset, util::{get_attrs, parse_tag}, EmbeddedParseResultType, Layer, ResourceCache, ResourcePath, ResourcePathBuf, ResourceReader};
+use crate::properties::parse_properties;
+use crate::util::XmlEventResult;
 
 pub(crate) struct MapTilesetGid {
     pub first_gid: Gid,
@@ -29,7 +24,7 @@ pub(crate) struct MapTilesetGid {
 pub struct Map {
     version: String,
     /// The path first used in a [`ResourceReader`] to load this map.
-    pub source: PathBuf,
+    pub source: ResourcePathBuf,
     /// The way tiles are laid out in the map.
     pub orientation: Orientation,
     /// Width of the map, in tiles.
@@ -162,7 +157,7 @@ impl Map {
     pub(crate) fn parse_xml(
         parser: &mut impl Iterator<Item = XmlEventResult>,
         attrs: Vec<OwnedAttribute>,
-        map_path: &Path,
+        map_path: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<Map> {
@@ -324,7 +319,7 @@ pub struct StaggerIndexError {
     pub str_found: String,
 }
 
-impl std::fmt::Display for StaggerIndexError {
+impl core::fmt::Display for StaggerIndexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
             "failed to parse stagger index, valid options are `even`, `odd` \
@@ -336,7 +331,7 @@ impl std::fmt::Display for StaggerIndexError {
 
 impl FromStr for StaggerIndex {
     type Err = StaggerIndexError;
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match s {
             "even" => Ok(StaggerIndex::Even),
             "odd" => Ok(StaggerIndex::Odd),
@@ -364,7 +359,7 @@ pub struct StaggerAxisError {
     pub str_found: String,
 }
 
-impl std::fmt::Display for StaggerAxisError {
+impl core::fmt::Display for StaggerAxisError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
             "failed to parse stagger axis, valid options are `x`, `y` \
@@ -376,7 +371,7 @@ impl std::fmt::Display for StaggerAxisError {
 
 impl FromStr for StaggerAxis {
     type Err = StaggerAxisError;
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match s {
             "x" => Ok(StaggerAxis::X),
             "y" => Ok(StaggerAxis::Y),
@@ -404,19 +399,19 @@ pub struct OrientationParseError {
     pub str_found: String,
 }
 
-impl std::fmt::Display for OrientationParseError {
+impl core::fmt::Display for OrientationParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("failed to parse orientation, valid options are `orthogonal`, `isometric`, `staggered` \
         and `hexagonal` but got `{}` instead", self.str_found))
     }
 }
 
-impl std::error::Error for OrientationParseError {}
+impl core::error::Error for OrientationParseError {}
 
 impl FromStr for Orientation {
     type Err = OrientationParseError;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match s {
             "orthogonal" => Ok(Orientation::Orthogonal),
             "isometric" => Ok(Orientation::Isometric),

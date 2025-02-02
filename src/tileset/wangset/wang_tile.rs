@@ -1,4 +1,6 @@
-use std::str::FromStr;
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use core::str::FromStr;
 
 use xml::attribute::OwnedAttribute;
 
@@ -15,7 +17,7 @@ pub struct WangId(pub [u8; 8]);
 impl FromStr for WangId {
     type Err = Error;
 
-    fn from_str(s: &str) -> std::result::Result<WangId, Error> {
+    fn from_str(s: &str) -> core::result::Result<WangId, Error> {
         let mut ret = [0u8; 8];
         let values: Vec<&str> = s
             .trim_start_matches('[')

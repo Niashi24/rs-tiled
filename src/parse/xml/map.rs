@@ -1,11 +1,16 @@
-use std::path::Path;
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::iter::FromIterator;
+use hashbrown::HashMap;
+use no_std_io2::io::Read;
 
 use xml::{reader::XmlEvent, EventReader};
-
-use crate::{Error, Map, ResourceCache, ResourceReader, Result};
+use crate::{Error, Map, ResourceCache, ResourcePath, ResourceReader, Result};
 
 pub fn parse_map(
-    path: &Path,
+    path: &ResourcePath,
     reader: &mut impl ResourceReader,
     cache: &mut impl ResourceCache,
 ) -> Result<Map> {

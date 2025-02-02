@@ -1,13 +1,13 @@
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
+use portable_atomic_util::Arc;
 use xml::EventReader;
 use xml::{attribute::OwnedAttribute, reader::XmlEvent};
 
-use crate::{
-    util::*, EmbeddedParseResultType, Error, MapTilesetGid, ObjectData, ResourceCache,
-    ResourceReader, Result, Tileset,
-};
+use crate::{parent, util::*, EmbeddedParseResultType, Error, MapTilesetGid, ObjectData, ResourceCache, ResourcePath, ResourcePathBuf, ResourceReader, Result, Tileset};
 
 /// A template, consisting of an object and a tileset
 ///
@@ -16,7 +16,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct Template {
     /// The path first used in a [`ResourceReader`] to load this template.
-    pub source: PathBuf,
+    pub source: ResourcePathBuf,
     /// The tileset this template contains a reference to
     pub tileset: Option<Arc<Tileset>>,
     /// The object data for this template
@@ -25,7 +25,7 @@ pub struct Template {
 
 impl Template {
     pub(crate) fn parse_template(
-        path: &Path,
+        path: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<Arc<Template>> {
@@ -65,7 +65,7 @@ impl Template {
 
     fn parse_external_template(
         parser: &mut impl Iterator<Item = XmlEventResult>,
-        template_path: &Path,
+        template_path: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<Arc<Template>> {
@@ -75,7 +75,7 @@ impl Template {
 
         parse_tag!(parser, "template", {
             "object" => |attrs| {
-                object = Some(ObjectData::new(parser, attrs, Some(&tileset_gid), tileset.clone(), template_path.parent().ok_or(Error::PathIsNotFile)?, reader, cache)?);
+                object = Some(ObjectData::new(parser, attrs, Some(&tileset_gid), tileset.clone(), parent(template_path).ok_or(Error::PathIsNotFile)?, reader, cache)?);
                 Ok(())
             },
             "tileset" => |attrs: Vec<OwnedAttribute>| {

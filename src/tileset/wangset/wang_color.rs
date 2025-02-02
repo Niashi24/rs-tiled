@@ -1,5 +1,6 @@
-use std::collections::HashMap;
-
+use alloc::string::String;
+use alloc::vec::Vec;
+use hashbrown::HashMap;
 use xml::attribute::OwnedAttribute;
 
 use crate::{

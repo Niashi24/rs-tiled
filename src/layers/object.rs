@@ -1,13 +1,10 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
+use alloc::vec::Vec;
+use portable_atomic_util::Arc;
+use hashbrown::HashMap;
 
 use xml::attribute::OwnedAttribute;
 
-use crate::{
-    parse_properties,
-    util::{get_attrs, map_wrapper, parse_tag, XmlEventResult},
-    Color, Error, MapTilesetGid, Object, ObjectData, Properties, ResourceCache, ResourceReader,
-    Result, Tileset,
-};
+use crate::{parse_properties, util::{get_attrs, map_wrapper, parse_tag, XmlEventResult}, Color, Error, MapTilesetGid, Object, ObjectData, Properties, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
 
 /// Raw data referring to a map object layer or tile collision data.
 #[derive(Debug, PartialEq, Clone)]
@@ -26,7 +23,7 @@ impl ObjectLayerData {
         tilesets: Option<&[MapTilesetGid]>,
         for_tileset: Option<Arc<Tileset>>,
         // path_relative_to is a directory to which all other files are relative to
-        path_relative_to: &Path,
+        path_relative_to: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<(ObjectLayerData, Properties)> {

@@ -1,11 +1,12 @@
-use std::path::Path;
-
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use alloc::string::ToString;
 use xml::{reader::XmlEvent, EventReader};
 
-use crate::{Error, ResourceCache, ResourceReader, Result, Tileset};
+use crate::{Error, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
 
 pub fn parse_tileset(
-    path: &Path,
+    path: &ResourcePath,
     reader: &mut impl ResourceReader,
     cache: &mut impl ResourceCache,
 ) -> Result<Tileset> {

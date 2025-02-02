@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use alloc::boxed::Box;
+use alloc::string::String;
+use alloc::vec::Vec;
+use hashbrown::HashMap;
 
 use xml::attribute::OwnedAttribute;
 
@@ -15,8 +18,8 @@ pub struct InfiniteTileLayerData {
     chunks: HashMap<(i32, i32), ChunkData>,
 }
 
-impl std::fmt::Debug for InfiniteTileLayerData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for InfiniteTileLayerData {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("InfiniteTileLayerData").finish()
     }
 }

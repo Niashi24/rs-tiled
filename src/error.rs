@@ -1,6 +1,9 @@
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
+use core::fmt;
+use core::num::ParseIntError;
 use crate::InvalidTilesetError::InvalidTileDimensions;
-use std::num::ParseIntError;
-use std::{fmt, path::PathBuf};
+use crate::ResourcePathBuf;
 
 /// Errors that can occur while decoding csv data.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,7 +21,7 @@ impl fmt::Display for CsvDecodingError {
     }
 }
 
-impl std::error::Error for CsvDecodingError {}
+impl core::error::Error for CsvDecodingError {}
 
 /// Errors that can occur parsing a Tileset.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,7 +42,7 @@ impl fmt::Display for InvalidTilesetError {
     }
 }
 
-impl std::error::Error for InvalidTilesetError {}
+impl core::error::Error for InvalidTilesetError {}
 
 /// Errors which occurred when parsing the file
 #[derive(Debug)]
@@ -48,9 +51,9 @@ pub enum Error {
     /// A attribute was missing, had the wrong type of wasn't formated
     /// correctly.
     MalformedAttributes(String),
-    /// An error occurred when decompressing using the
-    /// [flate2](https://github.com/alexcrichton/flate2-rs) crate.
-    DecompressingError(std::io::Error),
+    // /// An error occurred when decompressing using the
+    // /// [flate2](https://github.com/alexcrichton/flate2-rs) crate.
+    // DecompressingError(core::io::Error),
     /// An error occurred when decoding a base64 encoded dataset.
     Base64DecodingError(base64::DecodeError),
     /// An error occurred when decoding a csv encoded dataset.
@@ -65,9 +68,9 @@ pub enum Error {
     /// resource.
     ResourceLoadingError {
         /// The path to the file that was unable to be opened.
-        path: PathBuf,
+        path: ResourcePathBuf,
         /// The error that occurred when trying to open the file.
-        err: Box<dyn std::error::Error + Send + Sync + 'static>,
+        err: Box<dyn core::error::Error + Send + Sync + 'static>,
     },
     /// There was an invalid tile in the map parsed.
     InvalidTileFound,
@@ -110,13 +113,13 @@ pub enum Error {
 }
 
 /// A result with an error variant of [`crate::Error`].
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> std::result::Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> core::result::Result<(), fmt::Error> {
         match self {
             Error::MalformedAttributes(s) => write!(fmt, "{}", s),
-            Error::DecompressingError(e) => write!(fmt, "{}", e),
+            // Error::DecompressingError(e) => write!(fmt, "{}", e),
             Error::Base64DecodingError(e) => write!(fmt, "{}", e),
             Error::CsvDecodingError(e) => write!(fmt, "{}", e),
             Error::XmlDecodingError(e) => write!(fmt, "{}", e),
@@ -131,7 +134,7 @@ impl fmt::Display for Error {
                 write!(
                     fmt,
                     "Could not open '{}'. Error: {}",
-                    path.to_string_lossy(),
+                    path.to_string(),
                     err
                 )
             }
@@ -162,12 +165,12 @@ impl fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+impl core::error::Error for Error {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
-            Error::DecompressingError(e) => Some(e as &dyn std::error::Error),
-            Error::Base64DecodingError(e) => Some(e as &dyn std::error::Error),
-            Error::XmlDecodingError(e) => Some(e as &dyn std::error::Error),
+            // Error::DecompressingError(e) => Some(e as &dyn std::error::Error),
+            // Error::Base64DecodingError(e) => Some(e as &dyn core::error::Error),
+            Error::XmlDecodingError(e) => Some(e as &dyn core::error::Error),
             Error::ResourceLoadingError { err, .. } => Some(err.as_ref()),
             _ => None,
         }

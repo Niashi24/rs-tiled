@@ -1,16 +1,9 @@
-use std::{collections::HashMap, path::Path};
-
+use alloc::string::String;
+use alloc::vec::Vec;
+use hashbrown::HashMap;
 use xml::attribute::OwnedAttribute;
 
-use crate::{
-    animation::{parse_animation, Frame},
-    error::Error,
-    image::Image,
-    layers::ObjectLayerData,
-    properties::{parse_properties, Properties},
-    util::{get_attrs, parse_tag, XmlEventResult},
-    ResourceCache, ResourceReader, Result, Tileset,
-};
+use crate::{animation::{parse_animation, Frame}, error::Error, image::Image, layers::ObjectLayerData, properties::{parse_properties, Properties}, util::{get_attrs, parse_tag, XmlEventResult}, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
 
 /// A tile ID, local to a tileset.
 pub type TileId = u32;
@@ -50,7 +43,7 @@ impl<'tileset> Tile<'tileset> {
     }
 }
 
-impl<'tileset> std::ops::Deref for Tile<'tileset> {
+impl<'tileset> core::ops::Deref for Tile<'tileset> {
     type Target = TileData;
 
     #[inline]
@@ -63,7 +56,7 @@ impl TileData {
     pub(crate) fn new(
         parser: &mut impl Iterator<Item = XmlEventResult>,
         attrs: Vec<OwnedAttribute>,
-        path_relative_to: &Path,
+        path_relative_to: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<(TileId, TileData)> {

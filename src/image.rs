@@ -1,12 +1,10 @@
-use std::path::{Path, PathBuf};
+// use std::path::{Path, PathBuf};
 
+use alloc::borrow::ToOwned;
+use alloc::vec::Vec;
 use xml::attribute::OwnedAttribute;
 
-use crate::{
-    error::{Error, Result},
-    properties::Color,
-    util::*,
-};
+use crate::{error::{Error, Result}, properties::Color, util::*, ResourcePath, ResourcePathBuf};
 
 /// A reference to an image stored somewhere within the filesystem.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -58,7 +56,7 @@ pub struct Image {
     /// Check the assets/tiled_relative_paths.tmx file at the crate root to see the structure of the
     /// file this example is referring to.
     // TODO: Embedded images
-    pub source: PathBuf,
+    pub source: ResourcePathBuf,
     /// The width in pixels of the image.
     pub width: i32,
     /// The height in pixels of the image.
@@ -71,7 +69,7 @@ impl Image {
     pub(crate) fn new(
         parser: &mut impl Iterator<Item = XmlEventResult>,
         attrs: Vec<OwnedAttribute>,
-        path_relative_to: impl AsRef<Path>,
+        path_relative_to: impl AsRef<ResourcePath>,
     ) -> Result<Image> {
         let (c, (s, w, h)) = get_attrs!(
             for v in attrs {
@@ -85,7 +83,7 @@ impl Image {
 
         parse_tag!(parser, "image", {});
         Ok(Image {
-            source: path_relative_to.as_ref().join(s),
+            source: path_relative_to.as_ref().to_owned() + &s,
             width: w,
             height: h,
             transparent_colour: c,

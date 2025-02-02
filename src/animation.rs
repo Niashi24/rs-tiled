@@ -1,5 +1,6 @@
 //! Structures related to tile animations.
 
+use alloc::vec::Vec;
 use xml::attribute::OwnedAttribute;
 
 use crate::{

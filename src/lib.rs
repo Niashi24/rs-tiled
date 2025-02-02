@@ -4,6 +4,8 @@
 #![deny(unsafe_code)]
 #![deny(missing_copy_implementations)]
 #![deny(missing_debug_implementations)]
+#![no_std]
+extern crate alloc;
 
 mod animation;
 mod cache;

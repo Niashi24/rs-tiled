@@ -1,13 +1,14 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-
+use alloc::borrow::ToOwned;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use hashbrown::HashMap;
 use xml::attribute::OwnedAttribute;
 
 use crate::error::{Error, Result};
 use crate::image::Image;
 use crate::properties::{parse_properties, Properties};
 use crate::tile::TileData;
-use crate::{util::*, Gid, InvalidTilesetError, ResourceCache, ResourceReader, Tile, TileId};
+use crate::{parent, util::*, Gid, InvalidTilesetError, ResourceCache, ResourcePath, ResourcePathBuf, ResourceReader, Tile, TileId};
 
 mod wangset;
 pub use wangset::*;
@@ -20,7 +21,7 @@ pub struct Tileset {
     /// The path first used in a [`ResourceReader`] to load this tileset.
     ///
     /// For embedded tilesets, this path will be the same as the template or map's source.
-    pub source: PathBuf,
+    pub source: ResourcePathBuf,
     /// The name of the tileset, set by the user.
     pub name: String,
     /// The (maximum) width in pixels of the tiles in this tileset. Irrelevant for [image collection]
@@ -74,7 +75,7 @@ pub struct Tileset {
 }
 
 pub(crate) enum EmbeddedParseResultType {
-    ExternalReference { tileset_path: PathBuf },
+    ExternalReference { tileset_path: ResourcePathBuf },
     Embedded { tileset: Tileset },
 }
 
@@ -94,7 +95,7 @@ struct TilesetProperties {
     tile_width: u32,
     tile_height: u32,
     /// The root all non-absolute paths contained within the tileset are relative to.
-    root_path: PathBuf,
+    root_path: ResourcePathBuf,
 }
 
 impl Tileset {
@@ -117,7 +118,7 @@ impl Tileset {
     pub(crate) fn parse_xml_in_map(
         parser: &mut impl Iterator<Item = XmlEventResult>,
         attrs: &[OwnedAttribute],
-        path: &Path, // Template or Map file
+        path: &ResourcePath, // Template or Map file
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<EmbeddedParseResult> {
@@ -133,7 +134,7 @@ impl Tileset {
     fn parse_xml_embedded(
         parser: &mut impl Iterator<Item = XmlEventResult>,
         attrs: &[OwnedAttribute],
-        path: &Path, // Template or Map file
+        path: &ResourcePath, // Template or Map file
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<EmbeddedParseResult> {
@@ -157,7 +158,7 @@ impl Tileset {
            ((spacing, margin, columns, name, user_type, user_class), (tilecount, first_gid, tile_width, tile_height))
         );
 
-        let root_path = path.parent().ok_or(Error::PathIsNotFile)?.to_owned();
+        let root_path = parent(path).ok_or(Error::PathIsNotFile)?.to_owned();
 
         Self::finish_parsing_xml(
             parser,
@@ -184,7 +185,7 @@ impl Tileset {
 
     fn parse_xml_reference(
         attrs: &[OwnedAttribute],
-        map_path: &Path,
+        map_path: &ResourcePath,
     ) -> Result<EmbeddedParseResult> {
         let (first_gid, source) = get_attrs!(
             for v in attrs {
@@ -194,7 +195,7 @@ impl Tileset {
             (first_gid, source)
         );
 
-        let tileset_path = map_path.parent().ok_or(Error::PathIsNotFile)?.join(source);
+        let tileset_path = parent(map_path).ok_or(Error::PathIsNotFile)?.to_owned() + &source;
 
         Ok(EmbeddedParseResult {
             first_gid,
@@ -205,7 +206,7 @@ impl Tileset {
     pub(crate) fn parse_external_tileset(
         parser: &mut impl Iterator<Item = XmlEventResult>,
         attrs: &[OwnedAttribute],
-        path: &Path,
+        path: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
     ) -> Result<Tileset> {
@@ -228,7 +229,7 @@ impl Tileset {
             ((spacing, margin, columns, name, user_type, user_class), (tilecount, tile_width, tile_height))
         );
 
-        let root_path = path.parent().ok_or(Error::PathIsNotFile)?.to_owned();
+        let root_path = parent(path).ok_or(Error::PathIsNotFile)?.to_owned();
 
         Self::finish_parsing_xml(
             parser,
@@ -251,7 +252,7 @@ impl Tileset {
 
     fn finish_parsing_xml(
         parser: &mut impl Iterator<Item = XmlEventResult>,
-        container_path: PathBuf,
+        container_path: ResourcePathBuf,
         prop: TilesetProperties,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,

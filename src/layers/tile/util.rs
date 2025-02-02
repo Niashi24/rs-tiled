@@ -1,5 +1,7 @@
-use std::{convert::TryInto, io::Read};
-
+use alloc::borrow::ToOwned;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::convert::TryInto;
 use base64::Engine;
 use xml::reader::XmlEvent;
 
@@ -14,17 +16,17 @@ pub(crate) fn parse_data_line(
     match (encoding.as_deref(), compression.as_deref()) {
         (Some("csv"), None) => decode_csv(parser, tilesets),
 
-        (Some("base64"), None) => parse_base64(parser).map(|v| convert_to_tiles(&v, tilesets)),
-        (Some("base64"), Some("zlib")) => parse_base64(parser)
-            .and_then(|data| process_decoder(Ok(flate2::bufread::ZlibDecoder::new(&data[..]))))
-            .map(|v| convert_to_tiles(&v, tilesets)),
-        (Some("base64"), Some("gzip")) => parse_base64(parser)
-            .and_then(|data| process_decoder(Ok(flate2::bufread::GzDecoder::new(&data[..]))))
-            .map(|v| convert_to_tiles(&v, tilesets)),
-        #[cfg(feature = "zstd")]
-        (Some("base64"), Some("zstd")) => parse_base64(parser)
-            .and_then(|data| process_decoder(zstd::stream::read::Decoder::with_buffer(&data[..])))
-            .map(|v| convert_to_tiles(&v, tilesets)),
+        // (Some("base64"), None) => parse_base64(parser).map(|v| convert_to_tiles(&v, tilesets)),
+        // (Some("base64"), Some("zlib")) => parse_base64(parser)
+        //     .and_then(|data| process_decoder(Ok(flate2::bufread::ZlibDecoder::new(&data[..]))))
+        //     .map(|v| convert_to_tiles(&v, tilesets)),
+        // (Some("base64"), Some("gzip")) => parse_base64(parser)
+        //     .and_then(|data| process_decoder(Ok(flate2::bufread::GzDecoder::new(&data[..]))))
+        //     .map(|v| convert_to_tiles(&v, tilesets)),
+        // #[cfg(feature = "zstd")]
+        // (Some("base64"), Some("zstd")) => parse_base64(parser)
+        //     .and_then(|data| process_decoder(zstd::stream::read::Decoder::with_buffer(&data[..])))
+        //     .map(|v| convert_to_tiles(&v, tilesets)),
 
         _ => Err(Error::InvalidEncodingFormat {
             encoding,
@@ -33,35 +35,35 @@ pub(crate) fn parse_data_line(
     }
 }
 
-fn parse_base64(parser: &mut impl Iterator<Item = XmlEventResult>) -> Result<Vec<u8>> {
-    for next in parser {
-        match next.map_err(Error::XmlDecodingError)? {
-            XmlEvent::Characters(s) => {
-                return base64::engine::GeneralPurpose::new(
-                    &base64::alphabet::STANDARD,
-                    base64::engine::general_purpose::PAD,
-                )
-                .decode(s.trim().as_bytes())
-                .map_err(Error::Base64DecodingError);
-            }
-            XmlEvent::EndElement { name, .. } if name.local_name == "data" => {
-                return Ok(Vec::new());
-            }
-            _ => {}
-        }
-    }
-    Err(Error::PrematureEnd("Ran out of XML data".to_owned()))
-}
+// fn parse_base64(parser: &mut impl Iterator<Item = XmlEventResult>) -> Result<Vec<u8>> {
+//     for next in parser {
+//         match next.map_err(Error::XmlDecodingError)? {
+//             XmlEvent::Characters(s) => {
+//                 return base64::engine::GeneralPurpose::new(
+//                     &base64::alphabet::STANDARD,
+//                     base64::engine::general_purpose::PAD,
+//                 )
+//                 .decode(s.trim().as_bytes())
+//                 .map_err(Error::Base64DecodingError);
+//             }
+//             XmlEvent::EndElement { name, .. } if name.local_name == "data" => {
+//                 return Ok(Vec::new());
+//             }
+//             _ => {}
+//         }
+//     }
+//     Err(Error::PrematureEnd("Ran out of XML data".to_owned()))
+// }
 
-fn process_decoder(decoder: std::io::Result<impl Read>) -> Result<Vec<u8>> {
-    decoder
-        .and_then(|mut decoder| {
-            let mut data = Vec::new();
-            decoder.read_to_end(&mut data)?;
-            Ok(data)
-        })
-        .map_err(Error::DecompressingError)
-}
+// fn process_decoder(decoder: std::io::Result<impl Read>) -> Result<Vec<u8>> {
+//     decoder
+//         .and_then(|mut decoder| {
+//             let mut data = Vec::new();
+//             decoder.read_to_end(&mut data)?;
+//             Ok(data)
+//         })
+//         .map_err(Error::DecompressingError)
+// }
 
 fn decode_csv(
     parser: &mut impl Iterator<Item = XmlEventResult>,

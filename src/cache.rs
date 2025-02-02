@@ -1,15 +1,41 @@
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
-
+use alloc::borrow::ToOwned;
+use alloc::string::String;
+use hashbrown::HashMap;
+use portable_atomic_util::Arc;
 use crate::{Template, Tileset};
 
 /// A reference type that is used to refer to a resource. For the owned variant, see [`ResourcePathBuf`].
-pub type ResourcePath = Path;
+pub type ResourcePath = str;
 /// An owned type that is used to refer to a resource. For the non-owned variant, see [`ResourcePath`].
-pub type ResourcePathBuf = PathBuf;
+pub type ResourcePathBuf = String;
+
+pub fn parent(path: &ResourcePath) -> Option<&ResourcePath> {
+    if path.is_empty() {
+        return None;
+    }
+
+    let mut end = path.len();
+
+    // Remove trailing slashes, but keep root-only paths like "/"
+    while end > 1 && path.as_bytes()[end - 1] == b'/' {
+        end -= 1;
+    }
+
+    // Find the last non-trailing slash
+    if let Some(pos) = path[..end].rfind('/') {
+        if pos == 0 {
+            return Some(&path[..1]); // Root path "/"
+        }
+        return Some(&path[..pos]);
+    }
+
+    // No slash found, return empty string for relative paths
+    if path.contains('.') || path.contains(char::is_alphabetic) {
+        return Some("");
+    }
+
+    None
+}
 
 /// A trait identifying a data type that holds resources (such as tilesets) and maps them to a
 /// [`ResourcePath`] to prevent loading them more than once. Normally you don't need to use this
@@ -74,7 +100,7 @@ impl ResourceCache for DefaultResourceCache {
     }
 
     fn insert_tileset(&mut self, path: impl AsRef<ResourcePath>, tileset: Arc<Tileset>) {
-        self.tilesets.insert(path.as_ref().to_path_buf(), tileset);
+        self.tilesets.insert(path.as_ref().to_owned(), tileset);
     }
 
     fn get_template(&self, path: impl AsRef<ResourcePath>) -> Option<Arc<Template>> {
@@ -82,6 +108,6 @@ impl ResourceCache for DefaultResourceCache {
     }
 
     fn insert_template(&mut self, path: impl AsRef<ResourcePath>, tileset: Arc<Template>) {
-        self.templates.insert(path.as_ref().to_path_buf(), tileset);
+        self.templates.insert(path.as_ref().to_owned(), tileset);
     }
 }

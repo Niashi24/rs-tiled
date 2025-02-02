@@ -1,12 +1,8 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
+use alloc::vec::Vec;
+use hashbrown::HashMap;
+use portable_atomic_util::Arc;
 
-use crate::{
-    error::Result,
-    layers::{LayerData, LayerTag},
-    properties::{parse_properties, Properties},
-    util::*,
-    Error, Layer, MapTilesetGid, ResourceCache, ResourceReader, Tileset,
-};
+use crate::{error::Result, layers::{LayerData, LayerTag}, properties::{parse_properties, Properties}, util::*, Error, Layer, MapTilesetGid, ResourceCache, ResourcePath, ResourceReader, Tileset};
 
 /// The raw data of a [`GroupLayer`]. Does not include a reference to its parent [`Map`](crate::Map).
 #[derive(Debug, PartialEq, Clone)]
@@ -18,7 +14,7 @@ impl GroupLayerData {
     pub(crate) fn new(
         parser: &mut impl Iterator<Item = XmlEventResult>,
         infinite: bool,
-        map_path: &Path,
+        map_path: &ResourcePath,
         tilesets: &[MapTilesetGid],
         for_tileset: Option<Arc<Tileset>>,
         reader: &mut impl ResourceReader,

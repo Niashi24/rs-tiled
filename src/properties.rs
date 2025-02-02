@@ -1,11 +1,16 @@
-use std::{collections::HashMap, str::FromStr};
-
+use alloc::borrow::ToOwned;
+use alloc::format;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::str::FromStr;
+use hashbrown::HashMap;
 use xml::{attribute::OwnedAttribute, reader::XmlEvent};
 
 use crate::{
     error::{Error, Result},
-    util::{get_attrs, parse_tag, XmlEventResult},
+    util::{get_attrs, parse_tag},
 };
+use crate::util::XmlEventResult;
 
 /// Represents a RGBA color with 8-bit depth on each channel.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -20,7 +25,7 @@ pub struct Color {
 impl FromStr for Color {
     type Err = ();
 
-    fn from_str(s: &str) -> std::result::Result<Color, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Color, Self::Err> {
         let s = if let Some(stripped) = s.strip_prefix('#') {
             stripped
         } else {
