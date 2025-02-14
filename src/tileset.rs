@@ -195,7 +195,7 @@ impl Tileset {
             (first_gid, source)
         );
 
-        let tileset_path = parent(map_path).ok_or(Error::PathIsNotFile)?.to_owned() + &source;
+        let tileset_path = parent(map_path).ok_or(Error::PathIsNotFile)?.to_owned() + "/" + &source;
 
         Ok(EmbeddedParseResult {
             first_gid,
