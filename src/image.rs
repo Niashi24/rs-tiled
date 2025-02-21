@@ -83,7 +83,7 @@ impl Image {
 
         parse_tag!(parser, "image", {});
         Ok(Image {
-            source: path_relative_to.as_ref().to_owned() + &s,
+            source: path_relative_to.as_ref().to_owned() + "/" + &s,
             width: w,
             height: h,
             transparent_colour: c,
