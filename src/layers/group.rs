@@ -2,7 +2,14 @@ use alloc::vec::Vec;
 use hashbrown::HashMap;
 use portable_atomic_util::Arc;
 
-use crate::{error::Result, layers::{LayerData, LayerTag}, properties::{parse_properties, Properties}, util::*, Error, Layer, MapTilesetGid, ResourceCache, ResourcePath, ResourceReader, Tileset};
+use crate::{
+    error::Result,
+    layers::{LayerData, LayerTag},
+    parse::xml::{Parser, ReadFrom, Reader},
+    properties::{parse_properties, Properties},
+    util::*,
+    Error, Layer, MapTilesetGid, ResourceCache, ResourcePath, Tileset
+};
 
 /// The raw data of a [`GroupLayer`]. Does not include a reference to its parent [`Map`](crate::Map).
 #[derive(Debug, PartialEq, Clone)]
@@ -11,19 +18,20 @@ pub struct GroupLayerData {
 }
 
 impl GroupLayerData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
+    pub(crate) async fn new<R: Reader>(
+        parser: &mut Parser<R>,
         infinite: bool,
         map_path: &ResourcePath,
         tilesets: &[MapTilesetGid],
         for_tileset: Option<Arc<Tileset>>,
-        reader: &mut impl ResourceReader,
+        read_from: &mut impl ReadFrom,
         cache: &mut impl ResourceCache,
     ) -> Result<(Self, Properties)> {
         let mut properties = HashMap::new();
         let mut layers = Vec::new();
-        parse_tag!(parser, "group", {
-            "layer" => |attrs| {
+        let mut buffer = Vec::new();
+        parse_tag!(parser => &mut buffer, "group", {
+            "layer" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -31,12 +39,13 @@ impl GroupLayerData {
                     infinite,
                     map_path,
                     tilesets,
-                    for_tileset.as_ref().cloned(),reader,
+                    for_tileset.as_ref().cloned(),
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "imagelayer" => |attrs| {
+            "imagelayer" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -44,12 +53,13 @@ impl GroupLayerData {
                     infinite,
                     map_path,
                     tilesets,
-                    for_tileset.as_ref().cloned(),reader,
+                    for_tileset.as_ref().cloned(),
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "objectgroup" => |attrs| {
+            "objectgroup" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -57,12 +67,13 @@ impl GroupLayerData {
                     infinite,
                     map_path,
                     tilesets,
-                    for_tileset.as_ref().cloned(),reader,
+                    for_tileset.as_ref().cloned(),
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "group" => |attrs| {
+            "group" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -70,13 +81,14 @@ impl GroupLayerData {
                     infinite,
                     map_path,
                     tilesets,
-                    for_tileset.as_ref().cloned(),reader,
+                    for_tileset.as_ref().cloned(),
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
+            "properties" => {
+                properties = parse_properties(parser).await?;
                 Ok(())
             },
         });

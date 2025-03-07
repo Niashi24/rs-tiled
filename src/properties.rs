@@ -1,16 +1,16 @@
 use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 use hashbrown::HashMap;
-use xml::{attribute::OwnedAttribute, reader::XmlEvent};
-
+use quick_xml::events::{attributes::Attribute, Event};
 use crate::{
     error::{Error, Result},
+    parse::xml::{Parser, Reader},
     util::{get_attrs, parse_tag},
 };
-use crate::util::XmlEventResult;
 
 /// Represents a RGBA color with 8-bit depth on each channel.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -142,77 +142,147 @@ impl PropertyValue {
 /// A custom property container.
 pub type Properties = HashMap<String, PropertyValue>;
 
-pub(crate) fn parse_properties(
-    parser: &mut impl Iterator<Item = XmlEventResult>,
-) -> Result<Properties> {
+pub(crate) async fn parse_properties<R: Reader>(parser: &mut Parser<R>) -> Result<Properties> {
     let mut p = HashMap::new();
-    parse_tag!(parser, "properties", {
-        "property" => |attrs:Vec<OwnedAttribute>| {
-            let (t, v_attr, k, p_t) = get_attrs!(
-                for attr in attrs {
-                    Some("type") => obj_type = attr,
-                    Some("value") => value = attr,
-                    Some("propertytype") => propertytype = attr,
-                    "name" => name = attr
-                }
-                (obj_type, value, name, propertytype)
-            );
-            let t = t.unwrap_or_else(|| "string".to_owned());
-            if t == "class" {
-                // Class properties will have their member values stored in a nested <properties>
-                // element. Only the actually set members are saved. When no members have been set
-                // the properties element is left out entirely.
-                let properties = if has_properties_tag_next(parser) {
-                    parse_properties(parser)?
-                } else {
-                    HashMap::new()
-                };
-                p.insert(k, PropertyValue::ClassValue {
-                    property_type: p_t.unwrap_or_default(),
-                    properties,
-                });
-                return Ok(());
-            }
-
-            let v: String = match v_attr {
-                Some(val) => val,
-                None => {
-                    // if the "value" attribute was missing, might be a multiline string
-                    match parser.next() {
-                        Some(Ok(XmlEvent::Characters(s))) => Ok(s),
-                        Some(Err(err)) => Err(Error::XmlDecodingError(err)),
-                        None => unreachable!(), // EndDocument or error must come first
-                        _ => Err(Error::MalformedAttributes(format!("property '{}' is missing a value", k))),
-                    }?
-                }
-            };
-
-            p.insert(k, PropertyValue::new(t, v)?);
-            Ok(())
+    let mut buffer = Vec::new();
+    parse_tag!(parser => &mut buffer, "properties", {
+        "property" => for attrs {
+            Box::pin(parse_properties_inner(parser, &mut p, attrs)).await
         },
     });
+    
+    // parse_tag!(parser, "properties", {
+    //     "property" => |attrs:Vec<Attribute>| {
+    //         let (t, v_attr, k, p_t) = get_attrs!(
+    //             for attr in attrs {
+    //                 Some("type") => obj_type = attr,
+    //                 Some("value") => value = attr,
+    //                 Some("propertytype") => propertytype = attr,
+    //                 "name" => name = attr
+    //             }
+    //             (obj_type, value, name, propertytype)
+    //         );
+    //         let t = t.unwrap_or_else(|| "string".to_owned());
+    //         if t == "class" {
+    //             // Class properties will have their member values stored in a nested <properties>
+    //             // element. Only the actually set members are saved. When no members have been set
+    //             // the properties element is left out entirely.
+    //             let properties = if has_properties_tag_next(parser) {
+    //                 parse_properties(parser)?
+    //             } else {
+    //                 HashMap::new()
+    //             };
+    //             p.insert(k, PropertyValue::ClassValue {
+    //                 property_type: p_t.unwrap_or_default(),
+    //                 properties,
+    //             });
+    //             return Ok(());
+    //         }
+    // 
+    //         let v: String = match v_attr {
+    //             Some(val) => val,
+    //             None => {
+    //                 // if the "value" attribute was missing, might be a multiline string
+    //                 match parser.next() {
+    //                     Some(Ok(Event::Characters(s))) => Ok(s),
+    //                     Some(Err(err)) => Err(Error::XmlDecodingError(err)),
+    //                     None => unreachable!(), // EndDocument or error must come first
+    //                     _ => Err(Error::MalformedAttributes(format!("property '{}' is missing a value", k))),
+    //                 }?
+    //             }
+    //         };
+    // 
+    //         p.insert(k, PropertyValue::new(t, v)?);
+    //         Ok(())
+    //     },
+    // });
     Ok(p)
 }
 
+async fn parse_properties_inner<R: Reader>(
+    parser: &mut Parser<R>,
+    p: &mut HashMap<String, PropertyValue>,
+    attrs: Vec<Attribute<'_>>
+) -> Result<()> {
+    let (t, v_attr, k, p_t) = get_attrs!(
+        for attr in attrs {
+            Some("type") => obj_type = attr,
+            Some("value") => value = attr,
+            Some("propertytype") => propertytype = attr,
+            "name" => name = attr
+        }
+        (obj_type, value, name, propertytype)
+    );
+    
+    let t = t.unwrap_or("string").to_string();
+    if t == "class" {
+        let properties = if has_properties_tag_next(parser).await {
+            parse_properties(parser).await?
+        } else {
+            HashMap::new()
+        };
+        p.insert(
+            k.to_string(),
+            PropertyValue::ClassValue {
+                property_type: p_t.unwrap_or_default().to_string(),
+                properties,
+            },
+        );
+        
+        return Ok(());
+    }
+    
+    let v: String = match v_attr {
+        Some(val) => val.to_string(),
+        None => {
+            match parser.read_event().await {
+                Ok(Event::Text(text)) => {
+                    let text = text.into_inner();
+                    let text = core::str::from_utf8(&text)
+                        .map_err(|err| Error::XmlDecodingError(quick_xml::Error::Encoding(quick_xml::encoding::EncodingError::Utf8(err))))?;
+                    Ok(text.to_string())
+                }
+                Err(err) => Err(Error::XmlDecodingError(err)),
+                _ => Err(Error::MalformedAttributes(format!(
+                    "property `{}` is missing a value",
+                    k
+                ))),
+            }?
+        }
+    };
+    
+    p.insert(k.to_string(), PropertyValue::new(t, v)?);
+    Ok(())    
+}
+
 /// Checks if there is a properties tag next in the parser. Will consume any whitespace or comments.
-fn has_properties_tag_next(parser: &mut impl Iterator<Item = XmlEventResult>) -> bool {
-    let mut peekable = parser.by_ref().peekable();
-    while let Some(Ok(next)) = peekable.peek() {
+async fn has_properties_tag_next<R: Reader>(parser: &mut Parser<R>) -> bool {
+    if parser.last_event_was_empty {
+        return false;
+    }
+    
+    loop {
+        let Ok(next) = parser.read_event().await else {
+            break;
+        };
+        
         match next {
-            XmlEvent::StartElement { name, .. } if name.local_name == "properties" => return true,
-            // Ignore whitespace and comments
-            XmlEvent::Whitespace(_) => {
-                peekable.next();
+            Event::Start(start) if start.local_name().into_inner() == b"properties" => return true,
+            
+            Event::Text(mut text) => {
+                text.inplace_trim_start();
+                text.inplace_trim_end();
+                if text.is_empty() {
+                    continue;
+                } else {
+                    return false;
+                }
             }
-            XmlEvent::Comment(_) => {
-                peekable.next();
-            }
-            // If we encounter anything else than whitespace, comments or the properties tag, we
-            // assume there are no properties.
-            _ => {
-                return false;
-            }
+            
+            Event::Comment(_) => continue,
+            _ => return false,
         }
     }
+    
     false
 }

@@ -2,9 +2,15 @@
 
 use alloc::borrow::ToOwned;
 use alloc::vec::Vec;
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
-use crate::{error::{Error, Result}, properties::Color, util::*, ResourcePath, ResourcePathBuf};
+use crate::{
+    error::{Error, Result},
+    parse::xml::{Parser, Reader},
+    properties::Color,
+    util::*,
+    ResourcePath, ResourcePathBuf
+};
 
 /// A reference to an image stored somewhere within the filesystem.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -66,9 +72,9 @@ pub struct Image {
 }
 
 impl Image {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+    pub(crate) async fn new<'a, R: Reader>(
+        parser: &mut Parser<R>,
+        attrs: Vec<Attribute<'_>>,
         path_relative_to: impl AsRef<ResourcePath>,
     ) -> Result<Image> {
         let (c, (s, w, h)) = get_attrs!(

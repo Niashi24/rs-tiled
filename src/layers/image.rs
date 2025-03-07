@@ -1,6 +1,13 @@
+use alloc::vec::Vec;
 use hashbrown::HashMap;
 
-use crate::{parent, parse_properties, util::{map_wrapper, parse_tag, XmlEventResult}, Error, Image, Properties, ResourcePath, Result};
+use crate::{
+    parent,
+    parse::xml::{Parser, Reader},
+    parse_properties,
+    util::{map_wrapper, parse_tag},
+    Error, Image, Properties, ResourcePath, Result
+};
 
 /// The raw data of an [`ImageLayer`]. Does not include a reference to its parent [`Map`](crate::Map).
 #[derive(Debug, PartialEq, Clone)]
@@ -10,8 +17,8 @@ pub struct ImageLayerData {
 }
 
 impl ImageLayerData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
+    pub(crate) async fn new<R: Reader>(
+        parser: &mut Parser<R>,
         map_path: &ResourcePath,
     ) -> Result<(Self, Properties)> {
         let mut image: Option<Image> = None;
@@ -19,13 +26,14 @@ impl ImageLayerData {
 
         let path_relative_to = parent(map_path).ok_or(Error::PathIsNotFile)?;
 
-        parse_tag!(parser, "imagelayer", {
-            "image" => |attrs| {
-                image = Some(Image::new(parser, attrs, path_relative_to)?);
+        let mut buffer = Vec::new();
+        parse_tag!(parser => &mut buffer, "imagelayer", {
+            "image" => for attrs {
+                image = Some(Image::new(parser, attrs, path_relative_to).await?);
                 Ok(())
             },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
+            "properties" => {
+                properties = parse_properties(parser).await?;
                 Ok(())
             },
         });

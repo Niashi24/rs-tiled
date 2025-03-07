@@ -1,42 +1,55 @@
 use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use alloc::string::ToString;
-use xml::{reader::XmlEvent, EventReader};
+use alloc::vec::Vec;
+use itertools::Itertools;
+use quick_xml::events::Event;
 
-use crate::{Error, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
+use crate::{Error, ResourceCache, ResourcePath, Result, Tileset};
 
-pub fn parse_tileset(
+use super::{Parser, ReadFrom, Reader};
+
+pub async fn parse_tileset(
     path: &ResourcePath,
-    reader: &mut impl ResourceReader,
+    read_from: &mut impl ReadFrom,
     cache: &mut impl ResourceCache,
 ) -> Result<Tileset> {
-    let mut tileset_parser =
-        EventReader::new(
-            reader
-                .read_from(path)
-                .map_err(|err| Error::ResourceLoadingError {
-                    path: path.to_owned(),
-                    err: Box::new(err),
-                })?,
-        );
+    let mut reader =
+        read_from
+            .read_from(path)
+            .await
+            .map_err(|err| Error::ResourceLoadingError {
+                path: path.to_owned(),
+                err: Box::new(err),
+            })?;
+    let mut buffer = Vec::new();
     loop {
-        match tileset_parser.next().map_err(Error::XmlDecodingError)? {
-            XmlEvent::StartElement {
-                name, attributes, ..
-            } if name.local_name == "tileset" => {
+        match reader
+            .read_event_into(&mut buffer)
+            .await
+            .map_err(Error::XmlDecodingError)?
+        {
+            Event::Start(start) if start.local_name().into_inner() == b"tileset" => {
+                let attributes: Vec<_> = start
+                    .attributes()
+                    .try_collect()
+                    .map_err(|err| Error::XmlDecodingError(err.into()))?;
+
                 return Tileset::parse_external_tileset(
-                    &mut tileset_parser.into_iter(),
+                    &mut Parser::with_reader(reader),
                     &attributes,
                     path,
-                    reader,
+                    read_from,
                     cache,
-                );
+                )
+                    .await;
             }
-            XmlEvent::EndDocument => {
+            Event::Eof => {
                 return Err(Error::PrematureEnd(
                     "Tileset Document ended before map was parsed".to_string(),
                 ))
             }
+            
             _ => {}
         }
     }

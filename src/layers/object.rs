@@ -2,9 +2,15 @@ use alloc::vec::Vec;
 use portable_atomic_util::Arc;
 use hashbrown::HashMap;
 
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
-use crate::{parse_properties, util::{get_attrs, map_wrapper, parse_tag, XmlEventResult}, Color, Error, MapTilesetGid, Object, ObjectData, Properties, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
+use crate::{
+    parse::xml::{Parser, Reader},
+    parse_properties,
+    util::{get_attrs, map_wrapper, parse_tag},
+    Color, Error, MapTilesetGid, Object, ObjectData, Properties, ResourceCache, ResourcePath, Result, Tileset
+};
+use crate::parse::xml::ReadFrom;
 
 /// Raw data referring to a map object layer or tile collision data.
 #[derive(Debug, PartialEq, Clone)]
@@ -17,14 +23,14 @@ pub struct ObjectLayerData {
 impl ObjectLayerData {
     /// If it is known that there are no objects with tile images in it (i.e. collision data)
     /// then we can pass in [`None`] as the tilesets
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+    pub(crate) async fn new<R: Reader>(
+        parser: &mut Parser<R>,
+        attrs: Vec<Attribute<'_>>,
         tilesets: Option<&[MapTilesetGid]>,
         for_tileset: Option<Arc<Tileset>>,
         // path_relative_to is a directory to which all other files are relative to
         path_relative_to: &ResourcePath,
-        reader: &mut impl ResourceReader,
+        read_from: &mut impl ReadFrom,
         cache: &mut impl ResourceCache,
     ) -> Result<(ObjectLayerData, Properties)> {
         let c = get_attrs!(
@@ -35,13 +41,14 @@ impl ObjectLayerData {
         );
         let mut objects = Vec::new();
         let mut properties = HashMap::new();
-        parse_tag!(parser, "objectgroup", {
-            "object" => |attrs| {
-                objects.push(ObjectData::new(parser, attrs, tilesets, for_tileset.as_ref().cloned(), path_relative_to, reader, cache)?);
+        let mut buffer = Vec::new();
+        parse_tag!(parser => &mut buffer, "objectgroup", {
+            "object" => for attrs {
+                objects.push(ObjectData::new(parser, attrs, tilesets, for_tileset.as_ref().cloned(), path_relative_to, read_from, cache).await?);
                 Ok(())
             },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
+            "properties" => {
+                properties = parse_properties(parser).await?;
                 Ok(())
             },
         });

@@ -8,11 +8,18 @@ use core::fmt;
 use core::str::FromStr;
 use hashbrown::HashMap;
 use portable_atomic_util::Arc;
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
-use crate::{error::{Error, Result}, layers::{LayerData, LayerTag}, properties::{Color, Properties}, tileset::Tileset, util::{get_attrs, parse_tag}, EmbeddedParseResultType, Layer, ResourceCache, ResourcePath, ResourcePathBuf, ResourceReader};
+use crate::{
+    error::{Error, Result},
+    layers::{LayerData, LayerTag},
+    parse::xml::{Parser, Reader, ReadFrom},
+    properties::{Color, Properties},
+    tileset::Tileset,
+    util::{get_attrs, parse_tag},
+    EmbeddedParseResultType, Layer, ResourceCache, ResourcePath, ResourcePathBuf,
+};
 use crate::properties::parse_properties;
-use crate::util::XmlEventResult;
 
 pub(crate) struct MapTilesetGid {
     pub first_gid: Gid,
@@ -154,11 +161,11 @@ impl Map {
 }
 
 impl Map {
-    pub(crate) fn parse_xml(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+    pub(crate) async fn parse_xml<R: Reader>(
+        parser: &mut Parser<R>,
+        attrs: Vec<Attribute<'_>>,
         map_path: &ResourcePath,
-        reader: &mut impl ResourceReader,
+        read_from: &mut impl ReadFrom,
         cache: &mut impl ResourceCache,
     ) -> Result<Map> {
         let (
@@ -195,15 +202,16 @@ impl Map {
         let mut properties = HashMap::new();
         let mut tilesets = Vec::new();
 
-        parse_tag!(parser, "map", {
-            "tileset" => |attrs: Vec<OwnedAttribute>| {
-                let res = Tileset::parse_xml_in_map(parser, &attrs, map_path,  reader, cache)?;
+        let mut buffer = Vec::new();
+        parse_tag!(parser => &mut buffer, "map", {
+            "tileset" => for attrs {
+                let res = Tileset::parse_xml_in_map(parser, &attrs, map_path, read_from, cache).await?;
                 match res.result_type {
                     EmbeddedParseResultType::ExternalReference { tileset_path } => {
                         let tileset = if let Some(ts) = cache.get_tileset(&tileset_path) {
                             ts
                         } else {
-                            let tileset = Arc::new(crate::parse::xml::parse_tileset(&tileset_path,  reader, cache)?);
+                            let tileset = Arc::new(crate::parse::xml::parse_tileset(&tileset_path, read_from, cache).await?);
                             cache.insert_tileset(tileset_path.clone(), tileset.clone());
                             tileset
                         };
@@ -216,7 +224,7 @@ impl Map {
                 };
                 Ok(())
             },
-            "layer" => |attrs| {
+            "layer" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -225,12 +233,12 @@ impl Map {
                     map_path,
                     &tilesets,
                     None,
-                    reader,
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "imagelayer" => |attrs| {
+            "imagelayer" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -239,12 +247,12 @@ impl Map {
                     map_path,
                     &tilesets,
                     None,
-                    reader,
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "objectgroup" => |attrs| {
+            "objectgroup" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -253,12 +261,12 @@ impl Map {
                     map_path,
                     &tilesets,
                     None,
-                    reader,
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "group" => |attrs| {
+            "group" => for attrs {
                 layers.push(LayerData::new(
                     parser,
                     attrs,
@@ -267,13 +275,13 @@ impl Map {
                     map_path,
                     &tilesets,
                     None,
-                    reader,
+                    read_from,
                     cache
-                )?);
+                ).await?);
                 Ok(())
             },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
+            "properties" => {
+                properties = parse_properties(parser).await?;
                 Ok(())
             },
         });
@@ -282,7 +290,7 @@ impl Map {
         let tilesets = tilesets.into_iter().map(|ts| ts.tileset).collect();
 
         Ok(Map {
-            version: v,
+            version: v.to_owned(),
             source: map_path.to_owned(),
             orientation: o,
             width: w,

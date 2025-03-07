@@ -1,12 +1,11 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::str::FromStr;
-
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
 use crate::{
     error::Error,
-    util::{get_attrs, XmlEventResult},
+    util::{get_attrs},
     Result, TileId,
 };
 
@@ -47,8 +46,7 @@ pub struct WangTile {
 impl WangTile {
     /// Reads data from XML parser to create a WangTile.
     pub(crate) fn new(
-        _parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+        attrs: Vec<Attribute>,
     ) -> Result<(TileId, WangTile)> {
         // Get common data
         let (tile_id, wang_id) = get_attrs!(

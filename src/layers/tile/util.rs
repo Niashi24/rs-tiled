@@ -3,18 +3,22 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::convert::TryInto;
 use base64::Engine;
-use xml::reader::XmlEvent;
+use quick_xml::encoding::EncodingError;
+use quick_xml::events::Event;
 
-use crate::{util::XmlEventResult, CsvDecodingError, Error, LayerTileData, MapTilesetGid, Result};
+use crate::{
+    parse::xml::{Parser, Reader},
+    CsvDecodingError, Error, LayerTileData, MapTilesetGid, Result
+};
 
-pub(crate) fn parse_data_line(
-    encoding: Option<String>,
-    compression: Option<String>,
-    parser: &mut impl Iterator<Item = XmlEventResult>,
+pub(crate) async fn parse_data_line<R: Reader>(
+    encoding: Option<&str>,
+    compression: Option<&str>,
+    parser: &mut Parser<R>,
     tilesets: &[MapTilesetGid],
 ) -> Result<Vec<Option<LayerTileData>>> {
-    match (encoding.as_deref(), compression.as_deref()) {
-        (Some("csv"), None) => decode_csv(parser, tilesets),
+    match (encoding, compression) {
+        (Some("csv"), None) => decode_csv(parser, tilesets).await,
 
         // (Some("base64"), None) => parse_base64(parser).map(|v| convert_to_tiles(&v, tilesets)),
         // (Some("base64"), Some("zlib")) => parse_base64(parser)
@@ -29,8 +33,8 @@ pub(crate) fn parse_data_line(
         //     .map(|v| convert_to_tiles(&v, tilesets)),
 
         _ => Err(Error::InvalidEncodingFormat {
-            encoding,
-            compression,
+            encoding: encoding.map(ToOwned::to_owned),
+            compression: compression.map(ToOwned::to_owned),
         }),
     }
 }
@@ -65,15 +69,18 @@ pub(crate) fn parse_data_line(
 //         .map_err(Error::DecompressingError)
 // }
 
-fn decode_csv(
-    parser: &mut impl Iterator<Item = XmlEventResult>,
+async fn decode_csv<R: Reader>(
+    parser: &mut Parser<R>,
     tilesets: &[MapTilesetGid],
 ) -> Result<Vec<Option<LayerTileData>>> {
-    for next in parser {
-        match next.map_err(Error::XmlDecodingError)? {
-            XmlEvent::Characters(s) => {
+    loop {
+        let next = parser.read_event().await.map_err(Error::XmlDecodingError)?;
+        match next {
+            Event::Text(text) => {
+                let text = core::str::from_utf8(&text)
+                    .map_err(|err| Error::XmlDecodingError(quick_xml::Error::Encoding(EncodingError::Utf8(err))))?;
                 let mut tiles = Vec::new();
-                for v in s.split(',') {
+                for v in text.split(',') {
                     match v.trim().parse() {
                         Ok(bits) => tiles.push(LayerTileData::from_bits(bits, tilesets)),
                         Err(e) => {
@@ -85,13 +92,11 @@ fn decode_csv(
                 }
                 return Ok(tiles);
             }
-            XmlEvent::EndElement { name, .. } if name.local_name == "data" => {
-                return Ok(Vec::new());
-            }
+            Event::End(end) if end.local_name().into_inner() == b"data" => return Ok(Vec::new()),
+            Event::Eof => return Err(Error::PrematureEnd("Ran out of XML data".to_owned())),
             _ => {}
         }
     }
-    Err(Error::PrematureEnd("Ran out of XML data".to_owned()))
 }
 
 fn convert_to_tiles(data: &[u8], tilesets: &[MapTilesetGid]) -> Vec<Option<LayerTileData>> {

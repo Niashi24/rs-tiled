@@ -4,10 +4,15 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 use portable_atomic_util::Arc;
-use xml::EventReader;
-use xml::{attribute::OwnedAttribute, reader::XmlEvent};
+use quick_xml::events::Event;
 
-use crate::{parent, util::*, EmbeddedParseResultType, Error, MapTilesetGid, ObjectData, ResourceCache, ResourcePath, ResourcePathBuf, ResourceReader, Result, Tileset};
+use crate::{
+    parent,
+    parse::xml::{Parser, Reader},
+    util::*,
+    EmbeddedParseResultType, Error, MapTilesetGid, ObjectData, ResourceCache, ResourcePath, ResourcePathBuf, Result, Tileset
+};
+use crate::parse::xml::ReadFrom;
 
 /// A template, consisting of an object and a tileset
 ///
@@ -24,36 +29,37 @@ pub struct Template {
 }
 
 impl Template {
-    pub(crate) fn parse_template(
+    pub(crate) async fn parse_template(
         path: &ResourcePath,
-        reader: &mut impl ResourceReader,
+        read_from: &mut impl ReadFrom,
         cache: &mut impl ResourceCache,
     ) -> Result<Arc<Template>> {
         // Open the template file
-        let file = reader
+        let mut file = read_from
             .read_from(path)
+            .await
             .map_err(|err| Error::ResourceLoadingError {
                 path: path.to_owned(),
                 err: Box::new(err),
             })?;
 
-        let mut template_parser = EventReader::new(file);
+        let mut buffer = Vec::new();
         loop {
-            match template_parser.next().map_err(Error::XmlDecodingError)? {
-                XmlEvent::StartElement {
-                    name,
-                    attributes: _,
-                    ..
-                } if name.local_name == "template" => {
+            let next = file
+                .read_event_into(&mut buffer)
+                .await
+                .map_err(Error::XmlDecodingError)?;
+            match next {
+                Event::Start(start) if start.local_name().into_inner() == b"template" => {
                     let template = Self::parse_external_template(
-                        &mut template_parser.into_iter(),
+                        &mut Parser::with_reader(file),
                         path,
-                        reader,
+                        read_from,
                         cache,
-                    )?;
+                    ).await?;
                     return Ok(template);
                 }
-                XmlEvent::EndDocument => {
+                Event::Eof => {
                     return Err(Error::PrematureEnd(
                         "Template Document ended before template element was parsed".to_string(),
                     ))
@@ -63,29 +69,30 @@ impl Template {
         }
     }
 
-    fn parse_external_template(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
+    async fn parse_external_template<R: Reader>(
+        parser: &mut Parser<R>,
         template_path: &ResourcePath,
-        reader: &mut impl ResourceReader,
+        read_from: &mut impl ReadFrom,
         cache: &mut impl ResourceCache,
     ) -> Result<Arc<Template>> {
         let mut object = Option::None;
         let mut tileset = None;
         let mut tileset_gid: Vec<MapTilesetGid> = vec![];
 
-        parse_tag!(parser, "template", {
-            "object" => |attrs| {
-                object = Some(ObjectData::new(parser, attrs, Some(&tileset_gid), tileset.clone(), parent(template_path).ok_or(Error::PathIsNotFile)?, reader, cache)?);
+        let mut buffer = Vec::new();
+        parse_tag!(parser => &mut buffer, "template", {
+            "object" => for attrs {
+                object = Some(ObjectData::new(parser, attrs, Some(&tileset_gid), tileset.clone(), parent(template_path).ok_or(Error::PathIsNotFile)?, read_from, cache).await?);
                 Ok(())
             },
-            "tileset" => |attrs: Vec<OwnedAttribute>| {
-                let res = Tileset::parse_xml_in_map(parser, &attrs, template_path, reader, cache)?;
+            "tileset" => for attrs {
+                let res = Tileset::parse_xml_in_map(parser, &attrs, template_path, read_from, cache).await?;
                 match res.result_type {
                     EmbeddedParseResultType::ExternalReference { tileset_path } => {
                         tileset = Some(if let Some(ts) = cache.get_tileset(&tileset_path) {
                             ts
                         } else {
-                            let tileset = Arc::new(crate::parse::xml::parse_tileset(&tileset_path, reader, cache)?);
+                            let tileset = Arc::new(crate::parse::xml::parse_tileset(&tileset_path, read_from, cache).await?);
                             cache.insert_tileset(tileset_path.clone(), tileset.clone());
                             tileset
                         });

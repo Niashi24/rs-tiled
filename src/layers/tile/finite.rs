@@ -1,8 +1,9 @@
 use alloc::vec::Vec;
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
 use crate::{
-    util::{get_attrs, map_wrapper, XmlEventResult},
+    parse::xml::{Parser, Reader},
+    util::{get_attrs, map_wrapper},
     LayerTile, LayerTileData, MapTilesetGid, Result,
 };
 
@@ -39,9 +40,9 @@ impl FiniteTileLayerData {
         self.height
     }
 
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+    pub(crate) async fn new<R: Reader>(
+        parser: &mut Parser<R>,
+        attrs: Vec<Attribute<'_>>,
         width: u32,
         height: u32,
         tilesets: &[MapTilesetGid],
@@ -54,7 +55,7 @@ impl FiniteTileLayerData {
             (encoding, compression)
         );
 
-        let tiles = parse_data_line(e, c, parser, tilesets)?;
+        let tiles = parse_data_line(e, c, parser, tilesets).await?;
 
         Ok(Self {
             width,

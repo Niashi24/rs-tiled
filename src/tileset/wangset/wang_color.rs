@@ -1,12 +1,13 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
 use crate::{
     error::Error,
+    parse::xml::{Parser, Reader},
     properties::{parse_properties, Color, Properties},
-    util::{get_attrs, parse_tag, XmlEventResult},
+    util::{get_attrs, parse_tag},
     Result, TileId,
 };
 
@@ -27,9 +28,9 @@ pub struct WangColor {
 
 impl WangColor {
     /// Reads data from XML parser to create a WangColor.
-    pub fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+    pub(crate) async fn new<R: Reader>(
+        parser: &mut Parser<R>,
+        attrs: Vec<Attribute<'_>>,
     ) -> Result<WangColor> {
         // Get common data
         let (name, color, tile, probability) = get_attrs!(
@@ -47,8 +48,8 @@ impl WangColor {
         // Gather variable data
         let mut properties = HashMap::new();
         parse_tag!(parser, "wangcolor", {
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
+            "properties" => {
+                properties = parse_properties(parser).await?;
                 Ok(())
             },
         });

@@ -1,11 +1,12 @@
 use alloc::vec::Vec;
 use hashbrown::HashMap;
 
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
 use crate::{
+    parse::xml::{Parser, Reader},
     parse_properties,
-    util::{get_attrs, map_wrapper, parse_tag, XmlEventResult},
+    util::{get_attrs, map_wrapper, parse_tag},
     Error, Gid, Map, MapTilesetGid, Properties, Result, Tile, TileId, Tileset,
 };
 
@@ -95,9 +96,9 @@ pub(crate) enum TileLayerData {
 }
 
 impl TileLayerData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+    pub(crate) async fn new<R: Reader>(
+        parser: &mut Parser<R>,
+        attrs: Vec<Attribute<'_>>,
         infinite: bool,
         tilesets: &[MapTilesetGid],
     ) -> Result<(Self, Properties)> {
@@ -110,17 +111,18 @@ impl TileLayerData {
         );
         let mut result = Self::Finite(Default::default());
         let mut properties = HashMap::new();
-        parse_tag!(parser, "layer", {
-            "data" => |attrs| {
+        let mut buffer = Vec::new();
+        parse_tag!(parser => &mut buffer, "layer", {
+            "data" => for attrs {
                 if infinite {
-                    result = Self::Infinite(InfiniteTileLayerData::new(parser, attrs, tilesets)?);
+                    result = Self::Infinite(InfiniteTileLayerData::new(parser, attrs, tilesets).await?);
                 } else {
-                    result = Self::Finite(FiniteTileLayerData::new(parser, attrs, width, height, tilesets)?);
+                    result = Self::Finite(FiniteTileLayerData::new(parser, attrs, width, height, tilesets).await?);
                 }
                 Ok(())
             },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
+            "properties" => {
+                properties = parse_properties(parser).await?;
                 Ok(())
             },
         });

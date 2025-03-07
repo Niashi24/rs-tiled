@@ -1,9 +1,18 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
-use xml::attribute::OwnedAttribute;
+use quick_xml::events::attributes::Attribute;
 
-use crate::{animation::{parse_animation, Frame}, error::Error, image::Image, layers::ObjectLayerData, properties::{parse_properties, Properties}, util::{get_attrs, parse_tag, XmlEventResult}, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
+use crate::{
+    animation::{parse_animation, Frame},
+    error::Error,
+    image::Image,
+    layers::ObjectLayerData,
+    parse::xml::{Parser, ReadFrom, Reader},
+    properties::{parse_properties, Properties},
+    util::{get_attrs, parse_tag},
+    ResourceCache, ResourcePath, Result, Tileset
+};
 
 /// A tile ID, local to a tileset.
 pub type TileId = u32;
@@ -53,11 +62,11 @@ impl<'tileset> core::ops::Deref for Tile<'tileset> {
 }
 
 impl TileData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
+    pub(crate) async fn new<R: Reader>(
+        parser: &mut Parser<R>,
+        attrs: Vec<Attribute<'_>>,
         path_relative_to: &ResourcePath,
-        reader: &mut impl ResourceReader,
+        read_from: &mut impl ReadFrom,
         cache: &mut impl ResourceCache,
     ) -> Result<(TileId, TileData)> {
         let ((user_type, user_class, probability), id) = get_attrs!(
@@ -74,23 +83,27 @@ impl TileData {
         let mut properties = HashMap::new();
         let mut objectgroup = None;
         let mut animation = None;
-        parse_tag!(parser, "tile", {
-            "image" => |attrs| {
-                image = Some(Image::new(parser, attrs, path_relative_to)?);
+        let mut buffer = Vec::new();
+        parse_tag!(parser => &mut buffer, "tile", {
+            "image" => for attrs {
+                image = Some(Image::new(parser, attrs, path_relative_to).await?);
                 Ok(())
             },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
+            "properties" => {
+                properties = parse_properties(parser).await?;
                 Ok(())
             },
-            "objectgroup" => |attrs| {
+            "objectgroup" => for attrs {
                 // Tile objects are not allowed within tile object groups, so we can pass None as the
                 // tilesets vector
-                objectgroup = Some(ObjectLayerData::new(parser, attrs, None, None, path_relative_to, reader, cache)?.0);
+                objectgroup = Some(
+                    ObjectLayerData::new(parser, attrs, None, None, path_relative_to, read_from, cache)
+                        .await?.0
+                );
                 Ok(())
             },
-            "animation" => |_| {
-                animation = Some(parse_animation(parser)?);
+            "animation" => {
+                animation = Some(parse_animation(parser).await?);
                 Ok(())
             },
         });

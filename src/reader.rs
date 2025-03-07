@@ -1,4 +1,4 @@
-use no_std_io2::io::Read;
+use no_std_io2::io::{BufRead, Read};
 use crate::ResourcePath;
 
 /// A trait defining types that can load data from a [`ResourcePath`](crate::ResourcePath).
@@ -28,7 +28,7 @@ use crate::ResourcePath;
 pub trait ResourceReader {
     /// The type of the resource that the reader provides. For example, for
     /// [`FilesystemResourceReader`], this is defined as [`File`].
-    type Resource: Read;
+    type Resource: BufRead;
     /// The type that is returned if [`read_from()`](Self::read_from()) fails. For example, for
     /// [`FilesystemResourceReader`], this is defined as [`std::io::Error`].
     type Error: core::error::Error + Send + Sync + 'static;

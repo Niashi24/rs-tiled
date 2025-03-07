@@ -1,6 +1,11 @@
 // use std::path::Path;
+use futures::FutureExt;
 
-use crate::{DefaultResourceCache, Map, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
+use crate::{
+    
+    DefaultResourceCache, Map, ResourceCache, ResourcePath, ResourceReader, Result, Tileset
+};
+use crate::parse::xml::SyncReadFrom;
 
 /// A type used for loading [`Map`]s and [`Tileset`]s.
 ///
@@ -148,7 +153,10 @@ impl<Reader: ResourceReader, Cache: ResourceCache> Loader<Reader, Cache> {
     ///
     /// [internal loader cache]: Loader::cache()
     pub fn load_tmx_map(&mut self, path: impl AsRef<ResourcePath>) -> Result<Map> {
-        crate::parse::xml::parse_map(path.as_ref(), &mut self.reader, &mut self.cache)
+        let mut read_from = SyncReadFrom(&mut self.reader);
+        crate::parse::xml::parse_map(path.as_ref(), &mut read_from, &mut self.cache)
+            .now_or_never()
+            .expect("synchronously loading a TMX map stayed pending; this is a bug, please report it")
     }
 
     /// Parses a file hopefully containing a Tiled tileset and tries to parse it. All external files
@@ -161,7 +169,10 @@ impl<Reader: ResourceReader, Cache: ResourceCache> Loader<Reader, Cache> {
     /// This function will **not** cache the tileset inside the internal [`ResourceCache`], since
     /// in this context it is not an intermediate object.
     pub fn load_tsx_tileset(&mut self, path: impl AsRef<ResourcePath>) -> Result<Tileset> {
-        crate::parse::xml::parse_tileset(path.as_ref(), &mut self.reader, &mut self.cache)
+        let mut read_from = SyncReadFrom(&mut self.reader);
+        crate::parse::xml::parse_tileset(path.as_ref(), &mut read_from, &mut self.cache)
+            .now_or_never()
+            .expect("synchronously loading a TSX tileset stayed pending; this is a bug, please report it")
     }
 
     /// Returns a reference to the loader's internal [`ResourceCache`].
