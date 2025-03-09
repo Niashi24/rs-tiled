@@ -1,12 +1,12 @@
 use alloc::vec::Vec;
-use xml::attribute::OwnedAttribute;
+// use xml::attribute::OwnedAttribute;
 
 use crate::{
-    util::{get_attrs, map_wrapper, XmlEventResult},
+    util::{get_attrs, map_wrapper},
     LayerTile, LayerTileData, MapTilesetGid, Result,
 };
 
-use super::util::parse_data_line;
+// use super::util::parse_data_line;
 
 /// The raw data of a [`FiniteTileLayer`]. Does not include a reference to its parent [`Map`](crate::Map).
 #[derive(PartialEq, Clone, Default)]
@@ -39,29 +39,29 @@ impl FiniteTileLayerData {
         self.height
     }
 
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        width: u32,
-        height: u32,
-        tilesets: &[MapTilesetGid],
-    ) -> Result<Self> {
-        let (e, c) = get_attrs!(
-            for v in attrs {
-                Some("encoding") => encoding = v,
-                Some("compression") => compression = v,
-            }
-            (encoding, compression)
-        );
-
-        let tiles = parse_data_line(e, c, parser, tilesets)?;
-
-        Ok(Self {
-            width,
-            height,
-            tiles,
-        })
-    }
+    // pub(crate) fn new(
+    //     parser: &mut impl Iterator<Item = XmlEventResult>,
+    //     attrs: Vec<OwnedAttribute>,
+    //     width: u32,
+    //     height: u32,
+    //     tilesets: &[MapTilesetGid],
+    // ) -> Result<Self> {
+    //     let (e, c) = get_attrs!(
+    //         for v in attrs {
+    //             Some("encoding") => encoding = v,
+    //             Some("compression") => compression = v,
+    //         }
+    //         (encoding, compression)
+    //     );
+    // 
+    //     let tiles = parse_data_line(e, c, parser, tilesets)?;
+    // 
+    //     Ok(Self {
+    //         width,
+    //         height,
+    //         tiles,
+    //     })
+    // }
 
     /// Obtains the tile data present at the position given.
     ///

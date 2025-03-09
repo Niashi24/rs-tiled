@@ -1,10 +1,6 @@
 use alloc::string::String;
-use alloc::vec::Vec;
-use portable_atomic_util::Arc;
 
-use xml::attribute::OwnedAttribute;
-
-use crate::{error::Result, parent, properties::Properties, util::*, Color, Map, MapTilesetGid, ResourceCache, ResourcePath, ResourceReader, Tileset};
+use crate::{error::Result, parent, properties::Properties, util::*, Color, Map, MapTilesetGid, ResourceCache, ResourcePath, Tileset};
 
 mod image;
 pub use image::*;
@@ -66,96 +62,6 @@ impl LayerData {
         self.id
     }
 
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        tag: LayerTag,
-        infinite: bool,
-        map_path: &ResourcePath,
-        tilesets: &[MapTilesetGid],
-        for_tileset: Option<Arc<Tileset>>,
-        reader: &mut impl ResourceReader,
-        cache: &mut impl ResourceCache,
-    ) -> Result<Self> {
-        let (
-            opacity,
-            tint_color,
-            visible,
-            offset_x,
-            offset_y,
-            parallax_x,
-            parallax_y,
-            name,
-            id,
-            user_type,
-            user_class,
-        ) = get_attrs!(
-            for v in attrs {
-                Some("opacity") => opacity ?= v.parse(),
-                Some("tintcolor") => tint_color ?= v.parse(),
-                Some("visible") => visible ?= v.parse().map(|x:i32| x == 1),
-                Some("offsetx") => offset_x ?= v.parse(),
-                Some("offsety") => offset_y ?= v.parse(),
-                Some("parallaxx") => parallax_x ?= v.parse(),
-                Some("parallaxy") => parallax_y ?= v.parse(),
-                Some("name") => name = v,
-                Some("id") => id ?= v.parse(),
-                Some("type") => user_type ?= v.parse(),
-                Some("class") => user_class ?= v.parse(),
-            }
-            (opacity, tint_color, visible, offset_x, offset_y, parallax_x, parallax_y, name, id, user_type, user_class)
-        );
-
-        let (ty, properties) = match tag {
-            LayerTag::Tiles => {
-                let (ty, properties) = TileLayerData::new(parser, attrs, infinite, tilesets)?;
-                (LayerDataType::Tiles(ty), properties)
-            }
-            LayerTag::Objects => {
-                let (ty, properties) = ObjectLayerData::new(
-                    parser,
-                    attrs,
-                    Some(tilesets),
-                    for_tileset,
-                    parent(map_path).ok_or(crate::Error::PathIsNotFile)?,
-                    reader,
-                    cache,
-                )?;
-                (LayerDataType::Objects(ty), properties)
-            }
-            LayerTag::Image => {
-                let (ty, properties) = ImageLayerData::new(parser, map_path)?;
-                (LayerDataType::Image(ty), properties)
-            }
-            LayerTag::Group => {
-                let (ty, properties) = GroupLayerData::new(
-                    parser,
-                    infinite,
-                    map_path,
-                    tilesets,
-                    for_tileset,
-                    reader,
-                    cache,
-                )?;
-                (LayerDataType::Group(ty), properties)
-            }
-        };
-
-        Ok(Self {
-            visible: visible.unwrap_or(true),
-            offset_x: offset_x.unwrap_or(0.0),
-            offset_y: offset_y.unwrap_or(0.0),
-            parallax_x: parallax_x.unwrap_or(1.0),
-            parallax_y: parallax_y.unwrap_or(1.0),
-            opacity: opacity.unwrap_or(1.0),
-            tint_color,
-            name: name.unwrap_or_default(),
-            id: id.unwrap_or(0),
-            user_type: user_type.or(user_class),
-            properties,
-            layer_type: ty,
-        })
-    }
 }
 
 map_wrapper!(

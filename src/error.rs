@@ -59,7 +59,7 @@ pub enum Error {
     /// An error occurred when decoding a csv encoded dataset.
     CsvDecodingError(CsvDecodingError),
     /// An error occurred when parsing an XML file, such as a TMX or TSX file.
-    XmlDecodingError(xml::reader::Error),
+    // XmlDecodingError(xml::reader::Error),
     /// The XML stream ended before the document was fully parsed.
     PrematureEnd(String),
     /// The path given is invalid because it isn't contained in any folder.
@@ -122,7 +122,7 @@ impl fmt::Display for Error {
             // Error::DecompressingError(e) => write!(fmt, "{}", e),
             Error::Base64DecodingError(e) => write!(fmt, "{}", e),
             Error::CsvDecodingError(e) => write!(fmt, "{}", e),
-            Error::XmlDecodingError(e) => write!(fmt, "{}", e),
+            // Error::XmlDecodingError(e) => write!(fmt, "{}", e),
             Error::PrematureEnd(e) => write!(fmt, "{}", e),
             Error::PathIsNotFile => {
                 write!(
@@ -170,7 +170,7 @@ impl core::error::Error for Error {
         match self {
             // Error::DecompressingError(e) => Some(e as &dyn std::error::Error),
             // Error::Base64DecodingError(e) => Some(e as &dyn core::error::Error),
-            Error::XmlDecodingError(e) => Some(e as &dyn core::error::Error),
+            // Error::XmlDecodingError(e) => Some(e as &dyn core::error::Error),
             Error::ResourceLoadingError { err, .. } => Some(err.as_ref()),
             _ => None,
         }

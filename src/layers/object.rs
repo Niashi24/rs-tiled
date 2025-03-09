@@ -1,10 +1,5 @@
 use alloc::vec::Vec;
-use portable_atomic_util::Arc;
-use hashbrown::HashMap;
-
-use xml::attribute::OwnedAttribute;
-
-use crate::{parse_properties, util::{get_attrs, map_wrapper, parse_tag, XmlEventResult}, Color, Error, MapTilesetGid, Object, ObjectData, Properties, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
+use crate::{util::map_wrapper, Color, Object, ObjectData};
 
 /// Raw data referring to a map object layer or tile collision data.
 #[derive(Debug, PartialEq, Clone)]
@@ -15,39 +10,6 @@ pub struct ObjectLayerData {
 }
 
 impl ObjectLayerData {
-    /// If it is known that there are no objects with tile images in it (i.e. collision data)
-    /// then we can pass in [`None`] as the tilesets
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        tilesets: Option<&[MapTilesetGid]>,
-        for_tileset: Option<Arc<Tileset>>,
-        // path_relative_to is a directory to which all other files are relative to
-        path_relative_to: &ResourcePath,
-        reader: &mut impl ResourceReader,
-        cache: &mut impl ResourceCache,
-    ) -> Result<(ObjectLayerData, Properties)> {
-        let c = get_attrs!(
-            for v in attrs {
-                Some("color") => color ?= v.parse(),
-            }
-            color
-        );
-        let mut objects = Vec::new();
-        let mut properties = HashMap::new();
-        parse_tag!(parser, "objectgroup", {
-            "object" => |attrs| {
-                objects.push(ObjectData::new(parser, attrs, tilesets, for_tileset.as_ref().cloned(), path_relative_to, reader, cache)?);
-                Ok(())
-            },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
-                Ok(())
-            },
-        });
-        Ok((ObjectLayerData { objects, colour: c }, properties))
-    }
-
     /// Returns the data belonging to the objects contained within the layer, in the order they were
     /// declared in the TMX file.
     #[inline]

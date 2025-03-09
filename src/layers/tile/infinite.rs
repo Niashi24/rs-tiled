@@ -1,16 +1,11 @@
 use alloc::boxed::Box;
-use alloc::string::String;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
 
-use xml::attribute::OwnedAttribute;
-
 use crate::{
-    util::{floor_div, get_attrs, map_wrapper, parse_tag, XmlEventResult},
-    Error, LayerTile, LayerTileData, MapTilesetGid, Result,
+    util::{floor_div, map_wrapper}
+    , LayerTile, LayerTileData,
 };
-
-use super::util::parse_data_line;
 
 /// The raw data of a [`InfiniteTileLayer`]. Does not include a reference to its parent [`Map`](crate::Map).
 #[derive(PartialEq, Clone)]
@@ -25,45 +20,6 @@ impl core::fmt::Debug for InfiniteTileLayerData {
 }
 
 impl InfiniteTileLayerData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        tilesets: &[MapTilesetGid],
-    ) -> Result<Self> {
-        let (e, c) = get_attrs!(
-            for v in attrs {
-                Some("encoding") => encoding = v,
-                Some("compression") => compression = v,
-            }
-            (encoding, compression)
-        );
-
-        let mut chunks = HashMap::<(i32, i32), ChunkData>::new();
-        parse_tag!(parser, "data", {
-            "chunk" => |attrs| {
-                let chunk = InternalChunk::new(parser, attrs, e.clone(), c.clone(), tilesets)?;
-                for x in chunk.x..chunk.x + chunk.width as i32 {
-                    for y in chunk.y..chunk.y + chunk.height as i32 {
-                        let chunk_pos = ChunkData::tile_to_chunk_pos(x, y);
-                        let relative_pos = (x - chunk_pos.0 * ChunkData::WIDTH as i32, y - chunk_pos.1 * ChunkData::HEIGHT as i32);
-                        let chunk_index = (relative_pos.0 + relative_pos.1 * ChunkData::WIDTH as i32) as usize;
-                        let internal_pos = (x - chunk.x, y - chunk.y);
-                        let internal_index = (internal_pos.0 + internal_pos.1 * chunk.width as i32) as usize;
-
-                        if internal_index >= chunk.tiles.len() {
-                            return Err(Error::InvalidTileFound);
-                        }
-
-                        chunks.entry(chunk_pos).or_insert_with(ChunkData::new).tiles[chunk_index] = chunk.tiles[internal_index];
-                    }
-                }
-                Ok(())
-            }
-        });
-
-        Ok(Self { chunks })
-    }
-
     /// Obtains the tile data present at the position given.
     ///
     /// If the position given is invalid or the position is empty, this function will return [`None`].
@@ -170,49 +126,6 @@ impl<'map> Chunk<'map> {
         self.data
             .get_tile_data(x, y)
             .map(|data| LayerTile::new(self.map(), data))
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-struct InternalChunk {
-    /// The X coordinate of the top-left-most tile in the chunk.
-    /// Corresponds to the `x` attribute in the TMX format.
-    x: i32,
-    /// The Y coordinate of the top-left-most tile in the chunk.
-    /// Corresponds to the `y` attribute in the TMX format.
-    y: i32,
-    width: u32,
-    height: u32,
-    tiles: Vec<Option<LayerTileData>>,
-}
-
-impl InternalChunk {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        encoding: Option<String>,
-        compression: Option<String>,
-        tilesets: &[MapTilesetGid],
-    ) -> Result<Self> {
-        let (x, y, width, height) = get_attrs!(
-            for v in attrs {
-                "x" => x ?= v.parse::<i32>(),
-                "y" => y ?= v.parse::<i32>(),
-                "width" => width ?= v.parse::<u32>(),
-                "height" => height ?= v.parse::<u32>(),
-            }
-            (x, y, width, height)
-        );
-
-        let tiles = parse_data_line(encoding, compression, parser, tilesets)?;
-
-        Ok(InternalChunk {
-            x,
-            y,
-            width,
-            height,
-            tiles,
-        })
     }
 }
 

@@ -243,7 +243,7 @@ pub(crate) use parse_tag;
 
 use crate::{Gid, MapTilesetGid};
 
-pub(crate) type XmlEventResult = xml::reader::Result<xml::reader::XmlEvent>;
+// pub(crate) type XmlEventResult = xml::reader::Result<xml::reader::XmlEvent>;
 
 /// Returns both the tileset and its index
 pub(crate) fn get_tileset_for_gid(

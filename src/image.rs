@@ -1,10 +1,4 @@
-// use std::path::{Path, PathBuf};
-
-use alloc::borrow::ToOwned;
-use alloc::vec::Vec;
-use xml::attribute::OwnedAttribute;
-
-use crate::{error::{Error, Result}, properties::Color, util::*, ResourcePath, ResourcePathBuf};
+use crate::{properties::Color, ResourcePathBuf};
 
 /// A reference to an image stored somewhere within the filesystem.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -63,30 +57,4 @@ pub struct Image {
     pub height: i32,
     /// A color that should be interpreted as transparent (0 alpha), if any.
     pub transparent_colour: Option<Color>,
-}
-
-impl Image {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        path_relative_to: impl AsRef<ResourcePath>,
-    ) -> Result<Image> {
-        let (c, (s, w, h)) = get_attrs!(
-            for v in attrs {
-                Some("trans") => trans ?= v.parse(),
-                "source" => source = v,
-                "width" => width ?= v.parse::<i32>(),
-                "height" => height ?= v.parse::<i32>(),
-            }
-            (trans, (source, width, height))
-        );
-
-        parse_tag!(parser, "image", {});
-        Ok(Image {
-            source: path_relative_to.as_ref().to_owned() + "/" + &s,
-            width: w,
-            height: h,
-            transparent_colour: c,
-        })
-    }
 }

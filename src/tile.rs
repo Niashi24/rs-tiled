@@ -1,9 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
-use hashbrown::HashMap;
-use xml::attribute::OwnedAttribute;
 
-use crate::{animation::{parse_animation, Frame}, error::Error, image::Image, layers::ObjectLayerData, properties::{parse_properties, Properties}, util::{get_attrs, parse_tag, XmlEventResult}, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
+use crate::{animation::Frame, image::Image, layers::ObjectLayerData, properties::Properties, Tileset};
 
 /// A tile ID, local to a tileset.
 pub type TileId = u32;
@@ -49,61 +47,5 @@ impl<'tileset> core::ops::Deref for Tile<'tileset> {
     #[inline]
     fn deref(&self) -> &'tileset Self::Target {
         self.data
-    }
-}
-
-impl TileData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        path_relative_to: &ResourcePath,
-        reader: &mut impl ResourceReader,
-        cache: &mut impl ResourceCache,
-    ) -> Result<(TileId, TileData)> {
-        let ((user_type, user_class, probability), id) = get_attrs!(
-            for v in attrs {
-                Some("type") => user_type ?= v.parse(),
-                Some("class") => user_class ?= v.parse(),
-                Some("probability") => probability ?= v.parse(),
-                "id" => id ?= v.parse::<u32>(),
-            }
-            ((user_type, user_class, probability), id)
-        );
-        let user_type = user_type.or(user_class);
-        let mut image = Option::None;
-        let mut properties = HashMap::new();
-        let mut objectgroup = None;
-        let mut animation = None;
-        parse_tag!(parser, "tile", {
-            "image" => |attrs| {
-                image = Some(Image::new(parser, attrs, path_relative_to)?);
-                Ok(())
-            },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
-                Ok(())
-            },
-            "objectgroup" => |attrs| {
-                // Tile objects are not allowed within tile object groups, so we can pass None as the
-                // tilesets vector
-                objectgroup = Some(ObjectLayerData::new(parser, attrs, None, None, path_relative_to, reader, cache)?.0);
-                Ok(())
-            },
-            "animation" => |_| {
-                animation = Some(parse_animation(parser)?);
-                Ok(())
-            },
-        });
-        Ok((
-            id,
-            TileData {
-                image,
-                properties,
-                collision: objectgroup,
-                animation,
-                user_type,
-                probability: probability.unwrap_or(1.0),
-            },
-        ))
     }
 }

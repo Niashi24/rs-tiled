@@ -1,14 +1,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
-use xml::attribute::OwnedAttribute;
 
-use crate::{
-    error::Error,
-    properties::{parse_properties, Properties},
-    util::{get_attrs, parse_tag, XmlEventResult},
-    Result, TileId,
-};
+use crate::{properties::Properties, TileId};
 
 mod wang_color;
 pub use wang_color::*;
@@ -45,59 +39,4 @@ pub struct WangSet {
     pub wang_tiles: HashMap<TileId, WangTile>,
     /// The custom properties of this Wang set.
     pub properties: Properties,
-}
-
-impl WangSet {
-    /// Reads data from XML parser to create a WangSet.
-    pub fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-    ) -> Result<WangSet> {
-        // Get common data
-        let (name, wang_set_type, tile) = get_attrs!(
-            for v in attrs {
-                "name" => name ?= v.parse::<String>(),
-                "type" => wang_set_type ?= v.parse::<String>(),
-                "tile" => tile ?= v.parse::<i64>(),
-            }
-            (name, wang_set_type, tile)
-        );
-
-        let wang_set_type = match wang_set_type.as_str() {
-            "corner" => WangSetType::Corner,
-            "edge" => WangSetType::Edge,
-            _ => WangSetType::default(),
-        };
-        let tile = if tile >= 0 { Some(tile as u32) } else { None };
-
-        // Gather variable data
-        let mut wang_colors = Vec::new();
-        let mut wang_tiles = HashMap::new();
-        let mut properties = HashMap::new();
-        parse_tag!(parser, "wangset", {
-            "wangcolor" => |attrs| {
-                let color = WangColor::new(parser, attrs)?;
-                wang_colors.push(color);
-                Ok(())
-            },
-            "wangtile" => |attrs| {
-                let (id, t) = WangTile::new(parser, attrs)?;
-                wang_tiles.insert(id, t);
-                Ok(())
-            },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
-                Ok(())
-            },
-        });
-
-        Ok(WangSet {
-            name,
-            wang_set_type,
-            tile,
-            wang_colors,
-            wang_tiles,
-            properties,
-        })
-    }
 }

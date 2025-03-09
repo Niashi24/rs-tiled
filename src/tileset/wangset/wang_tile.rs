@@ -2,13 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use xml::attribute::OwnedAttribute;
-
-use crate::{
-    error::Error,
-    util::{get_attrs, XmlEventResult},
-    Result, TileId,
-};
+use crate::error::Error;
 
 /// The Wang ID, stored as an array of 8 u8 values.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -42,23 +36,4 @@ impl FromStr for WangId {
 pub struct WangTile {
     #[allow(missing_docs)]
     pub wang_id: WangId,
-}
-
-impl WangTile {
-    /// Reads data from XML parser to create a WangTile.
-    pub(crate) fn new(
-        _parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-    ) -> Result<(TileId, WangTile)> {
-        // Get common data
-        let (tile_id, wang_id) = get_attrs!(
-            for v in attrs {
-                "tileid" => tile_id ?= v.parse::<u32>(),
-                "wangid" => wang_id ?= v.parse(),
-            }
-            (tile_id, wang_id)
-        );
-
-        Ok((tile_id, WangTile { wang_id }))
-    }
 }

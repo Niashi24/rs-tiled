@@ -1,17 +1,10 @@
-use alloc::vec::Vec;
-use hashbrown::HashMap;
-
-use xml::attribute::OwnedAttribute;
-
 use crate::{
-    parse_properties,
-    util::{get_attrs, map_wrapper, parse_tag, XmlEventResult},
-    Error, Gid, Map, MapTilesetGid, Properties, Result, Tile, TileId, Tileset,
+    util::map_wrapper
+    , Gid, Map, MapTilesetGid, Result, Tile, TileId, Tileset,
 };
 
 mod finite;
 mod infinite;
-mod util;
 
 pub use finite::*;
 pub use infinite::*;
@@ -92,41 +85,6 @@ impl LayerTileData {
 pub(crate) enum TileLayerData {
     Finite(FiniteTileLayerData),
     Infinite(InfiniteTileLayerData),
-}
-
-impl TileLayerData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        attrs: Vec<OwnedAttribute>,
-        infinite: bool,
-        tilesets: &[MapTilesetGid],
-    ) -> Result<(Self, Properties)> {
-        let (width, height) = get_attrs!(
-            for v in attrs {
-                "width" => width ?= v.parse::<u32>(),
-                "height" => height ?= v.parse::<u32>(),
-            }
-            (width, height)
-        );
-        let mut result = Self::Finite(Default::default());
-        let mut properties = HashMap::new();
-        parse_tag!(parser, "layer", {
-            "data" => |attrs| {
-                if infinite {
-                    result = Self::Infinite(InfiniteTileLayerData::new(parser, attrs, tilesets)?);
-                } else {
-                    result = Self::Finite(FiniteTileLayerData::new(parser, attrs, width, height, tilesets)?);
-                }
-                Ok(())
-            },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
-                Ok(())
-            },
-        });
-
-        Ok((result, properties))
-    }
 }
 
 map_wrapper!(

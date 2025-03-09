@@ -1,87 +1,11 @@
 use alloc::vec::Vec;
-use hashbrown::HashMap;
-use portable_atomic_util::Arc;
 
-use crate::{error::Result, layers::{LayerData, LayerTag}, properties::{parse_properties, Properties}, util::*, Error, Layer, MapTilesetGid, ResourceCache, ResourcePath, ResourceReader, Tileset};
+use crate::{layers::LayerData, util::*, Layer};
 
 /// The raw data of a [`GroupLayer`]. Does not include a reference to its parent [`Map`](crate::Map).
 #[derive(Debug, PartialEq, Clone)]
 pub struct GroupLayerData {
     layers: Vec<LayerData>,
-}
-
-impl GroupLayerData {
-    pub(crate) fn new(
-        parser: &mut impl Iterator<Item = XmlEventResult>,
-        infinite: bool,
-        map_path: &ResourcePath,
-        tilesets: &[MapTilesetGid],
-        for_tileset: Option<Arc<Tileset>>,
-        reader: &mut impl ResourceReader,
-        cache: &mut impl ResourceCache,
-    ) -> Result<(Self, Properties)> {
-        let mut properties = HashMap::new();
-        let mut layers = Vec::new();
-        parse_tag!(parser, "group", {
-            "layer" => |attrs| {
-                layers.push(LayerData::new(
-                    parser,
-                    attrs,
-                    LayerTag::Tiles,
-                    infinite,
-                    map_path,
-                    tilesets,
-                    for_tileset.as_ref().cloned(),reader,
-                    cache
-                )?);
-                Ok(())
-            },
-            "imagelayer" => |attrs| {
-                layers.push(LayerData::new(
-                    parser,
-                    attrs,
-                    LayerTag::Image,
-                    infinite,
-                    map_path,
-                    tilesets,
-                    for_tileset.as_ref().cloned(),reader,
-                    cache
-                )?);
-                Ok(())
-            },
-            "objectgroup" => |attrs| {
-                layers.push(LayerData::new(
-                    parser,
-                    attrs,
-                    LayerTag::Objects,
-                    infinite,
-                    map_path,
-                    tilesets,
-                    for_tileset.as_ref().cloned(),reader,
-                    cache
-                )?);
-                Ok(())
-            },
-            "group" => |attrs| {
-                layers.push(LayerData::new(
-                    parser,
-                    attrs,
-                    LayerTag::Group,
-                    infinite,
-                    map_path,
-                    tilesets,
-                    for_tileset.as_ref().cloned(),reader,
-                    cache
-                )?);
-                Ok(())
-            },
-            "properties" => |_| {
-                properties = parse_properties(parser)?;
-                Ok(())
-            },
-        });
-        Ok((Self { layers }, properties))
-    }
 }
 
 map_wrapper!(
