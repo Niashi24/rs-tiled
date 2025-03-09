@@ -1,6 +1,6 @@
 //! Structures related to Tiled maps.
 
-use alloc::borrow::ToOwned;
+use alloc::{borrow::ToOwned, boxed::Box};
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -197,7 +197,7 @@ impl Map {
 
         parse_tag!(parser, "map", {
             "tileset" => |attrs: Vec<OwnedAttribute>| {
-                let res = Tileset::parse_xml_in_map(parser, &attrs, map_path,  reader, cache)?;
+                let res = Box::new(Tileset::parse_xml_in_map(parser, &attrs, map_path,  reader, cache)?);
                 match res.result_type {
                     EmbeddedParseResultType::ExternalReference { tileset_path } => {
                         let tileset = if let Some(ts) = cache.get_tileset(&tileset_path) {
@@ -211,7 +211,7 @@ impl Map {
                         tilesets.push(MapTilesetGid{first_gid: res.first_gid, tileset});
                     }
                     EmbeddedParseResultType::Embedded { tileset } => {
-                        tilesets.push(MapTilesetGid{first_gid: res.first_gid, tileset: Arc::new(tileset)});
+                        tilesets.push(MapTilesetGid{first_gid: res.first_gid, tileset: Arc::from(tileset)});
                     },
                 };
                 Ok(())

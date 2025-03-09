@@ -1,4 +1,5 @@
 use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use hashbrown::HashMap;
@@ -76,7 +77,7 @@ pub struct Tileset {
 
 pub(crate) enum EmbeddedParseResultType {
     ExternalReference { tileset_path: ResourcePathBuf },
-    Embedded { tileset: Tileset },
+    Embedded { tileset: Box<Tileset> },
 }
 
 pub(crate) struct EmbeddedParseResult {
@@ -179,7 +180,7 @@ impl Tileset {
         )
         .map(|tileset| EmbeddedParseResult {
             first_gid,
-            result_type: EmbeddedParseResultType::Embedded { tileset },
+            result_type: EmbeddedParseResultType::Embedded { tileset: Box::new(tileset) },
         })
     }
 

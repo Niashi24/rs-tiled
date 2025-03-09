@@ -20,7 +20,7 @@ pub struct Template {
     /// The tileset this template contains a reference to
     pub tileset: Option<Arc<Tileset>>,
     /// The object data for this template
-    pub object: ObjectData,
+    pub object: Box<ObjectData>,
 }
 
 impl Template {
@@ -75,7 +75,7 @@ impl Template {
 
         parse_tag!(parser, "template", {
             "object" => |attrs| {
-                object = Some(ObjectData::new(parser, attrs, Some(&tileset_gid), tileset.clone(), parent(template_path).ok_or(Error::PathIsNotFile)?, reader, cache)?);
+                object = Some(Box::new(ObjectData::new(parser, attrs, Some(&tileset_gid), tileset.clone(), parent(template_path).ok_or(Error::PathIsNotFile)?, reader, cache)?));
                 Ok(())
             },
             "tileset" => |attrs: Vec<OwnedAttribute>| {
@@ -91,7 +91,7 @@ impl Template {
                         });
                     }
                     EmbeddedParseResultType::Embedded { tileset: embedded_tileset } => {
-                        tileset = Some(Arc::new(embedded_tileset));
+                        tileset = Some(Arc::from(embedded_tileset));
                     },
                 };
                 tileset_gid.push(MapTilesetGid {

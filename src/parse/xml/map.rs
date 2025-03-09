@@ -14,15 +14,15 @@ pub fn parse_map(
     reader: &mut impl ResourceReader,
     cache: &mut impl ResourceCache,
 ) -> Result<Map> {
-    let mut parser =
-        EventReader::new(
+    let mut parser = 
+        Box::new(EventReader::new(
             reader
                 .read_from(path)
                 .map_err(|err| Error::ResourceLoadingError {
                     path: path.to_owned(),
                     err: Box::new(err),
                 })?,
-        );
+        ));
     loop {
         match parser.next().map_err(Error::XmlDecodingError)? {
             XmlEvent::StartElement {
@@ -30,7 +30,7 @@ pub fn parse_map(
             } => {
                 if name.local_name == "map" {
                     return Map::parse_xml(
-                        &mut parser.into_iter(),
+                        &mut Box::new(parser.into_iter()),
                         attributes,
                         path,
                         reader,
