@@ -142,12 +142,12 @@ impl PropertyValue {
 /// A custom property container.
 pub type Properties = HashMap<String, PropertyValue>;
 
-pub(crate) async fn parse_properties<R: Reader>(parser: &mut Parser<R>) -> Result<Properties> {
+pub(crate) fn parse_properties<R: Reader>(parser: &mut Parser<R>) -> Result<Properties> {
     let mut p = HashMap::new();
     let mut buffer = Vec::new();
     parse_tag!(parser => &mut buffer, "properties", {
         "property" => for attrs {
-            Box::pin(parse_properties_inner(parser, &mut p, attrs)).await
+            parse_properties_inner(parser, &mut p, attrs)
         },
     });
     
@@ -199,7 +199,7 @@ pub(crate) async fn parse_properties<R: Reader>(parser: &mut Parser<R>) -> Resul
     Ok(p)
 }
 
-async fn parse_properties_inner<R: Reader>(
+fn parse_properties_inner<R: Reader>(
     parser: &mut Parser<R>,
     p: &mut HashMap<String, PropertyValue>,
     attrs: Vec<Attribute<'_>>
@@ -216,8 +216,8 @@ async fn parse_properties_inner<R: Reader>(
     
     let t = t.unwrap_or("string").to_string();
     if t == "class" {
-        let properties = if has_properties_tag_next(parser).await {
-            parse_properties(parser).await?
+        let properties = if has_properties_tag_next(parser) {
+            parse_properties(parser)?
         } else {
             HashMap::new()
         };
@@ -235,7 +235,7 @@ async fn parse_properties_inner<R: Reader>(
     let v: String = match v_attr {
         Some(val) => val.to_string(),
         None => {
-            match parser.read_event().await {
+            match parser.read_event() {
                 Ok(Event::Text(text)) => {
                     let text = text.into_inner();
                     let text = core::str::from_utf8(&text)
@@ -256,13 +256,13 @@ async fn parse_properties_inner<R: Reader>(
 }
 
 /// Checks if there is a properties tag next in the parser. Will consume any whitespace or comments.
-async fn has_properties_tag_next<R: Reader>(parser: &mut Parser<R>) -> bool {
+fn has_properties_tag_next<R: Reader>(parser: &mut Parser<R>) -> bool {
     if parser.last_event_was_empty {
         return false;
     }
     
     loop {
-        let Ok(next) = parser.read_event().await else {
+        let Ok(next) = parser.read_event() else {
             break;
         };
         

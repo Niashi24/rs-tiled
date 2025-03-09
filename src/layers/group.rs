@@ -18,7 +18,7 @@ pub struct GroupLayerData {
 }
 
 impl GroupLayerData {
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         infinite: bool,
         map_path: &ResourcePath,
@@ -42,7 +42,7 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "imagelayer" => for attrs {
@@ -56,7 +56,7 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "objectgroup" => for attrs {
@@ -70,7 +70,7 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "group" => for attrs {
@@ -84,11 +84,11 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });

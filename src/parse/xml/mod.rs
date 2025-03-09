@@ -19,7 +19,7 @@ use crate::ResourceReader;
 pub(crate) trait Reader {
     /// Delegates to either [`RawReader::read_event_into`] or [`RawReader::read_event_into_async`],
     /// depending on the implementor.
-    async fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> ReadResult<Event<'b>>;
+    fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> ReadResult<Event<'b>>;
 }
 
 /// A [`RawReader`] in 'sync' mode, i.e. that will delegate to [`RawReader::read_event_into`].
@@ -27,7 +27,7 @@ pub(crate) struct SyncReader<R>(pub(crate) RawReader<R>);
 
 impl<R: BufRead> Reader for SyncReader<R> {
     /// Will immediately return the next event on the first poll.
-    async fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> ReadResult<Event<'b>> {
+    fn read_event_into<'b>(&mut self, buf: &'b mut Vec<u8>) -> ReadResult<Event<'b>> {
         self.0.read_event_into(buf)
     }
 }
@@ -40,7 +40,7 @@ pub(crate) struct AsyncReader<R>(pub(crate) RawReader<R>);
 pub(crate) trait ReadFrom {
     type Reader: Reader;
     type Error: core::error::Error + Send + Sync + 'static;
-    async fn read_from(&mut self, path: &ResourcePath) -> Result<Self::Reader, Self::Error>;
+    fn read_from(&mut self, path: &ResourcePath) -> Result<Self::Reader, Self::Error>;
 }
 
 /// Wraps a [`ResourceReader`].
@@ -51,7 +51,7 @@ impl<R: ResourceReader> ReadFrom for SyncReadFrom<'_, R> {
     type Error = R::Error;
 
     /// Returns on the first poll.
-    async fn read_from(&mut self, path: &ResourcePath) -> Result<Self::Reader, Self::Error> {
+    fn read_from(&mut self, path: &ResourcePath) -> Result<Self::Reader, Self::Error> {
         let resource = self.0.read_from(path)?;
         Ok(SyncReader(RawReader::from_reader(resource)))
     }
@@ -64,8 +64,8 @@ pub(crate) struct AsyncReadFrom<'r, R>(pub(crate) &'r mut R);
 //     type Reader = AsyncReader<R::Resource>;
 //     type Error = R::Error;
 // 
-//     async fn read_from(&mut self, path: &ResourcePath) -> Result<Self::Reader, Self::Error> {
-//         let resource = self.0.read_from(path).await?;
+//     fn read_from(&mut self, path: &ResourcePath) -> Result<Self::Reader, Self::Error> {
+//         let resource = self.0.read_from(path)?;
 //         Ok(AsyncReader(RawReader::from_reader(resource)))
 //     }
 // }
@@ -89,17 +89,17 @@ impl<R> Parser<R> {
 }
 
 impl<R: Reader> Parser<R> {
-    pub(crate) async fn read_event(&mut self) -> ReadResult<Event> {
-        let event = self.reader.read_event_into(&mut self.buffer).await?;
+    pub(crate) fn read_event(&mut self) -> ReadResult<Event> {
+        let event = self.reader.read_event_into(&mut self.buffer)?;
         self.last_event_was_empty = matches!(event, Event::Empty(_));
         Ok(event)
     }
     
-    pub(crate) async fn read_event_into<'a>(
+    pub(crate) fn read_event_into<'a>(
         &mut self,
         buf: &'a mut Vec<u8>,
     ) -> ReadResult<Event<'a>> {
-        let event = self.reader.read_event_into(buf).await?;
+        let event = self.reader.read_event_into(buf)?;
         self.last_event_was_empty = matches!(event, Event::Empty(_));
         Ok(event)
     }

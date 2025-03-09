@@ -28,7 +28,7 @@ pub struct WangColor {
 
 impl WangColor {
     /// Reads data from XML parser to create a WangColor.
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
     ) -> Result<WangColor> {
@@ -49,7 +49,7 @@ impl WangColor {
         let mut properties = HashMap::new();
         parse_tag!(parser, "wangcolor", {
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });

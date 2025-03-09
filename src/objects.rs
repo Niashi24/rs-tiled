@@ -225,7 +225,7 @@ impl ObjectData {
 impl ObjectData {
     /// If it is known that the object has no tile images in it (i.e. collision data)
     /// then we can pass in [`None`] as the tilesets
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         tilesets: Option<&[MapTilesetGid]>,
@@ -265,9 +265,8 @@ impl ObjectData {
                 let template = if let Some(templ) = cache.get_template(&template_path) {
                     templ
                 } else {
-                    let template =
-                        Box::pin(Template::parse_template(&template_path, read_from, cache))
-                            .await?;
+                    let template = Template::parse_template(&template_path, read_from, cache)
+                            ?;
                     
                     cache.insert_template(&template_path, template.clone());
                     template
@@ -329,11 +328,11 @@ impl ObjectData {
                 Ok(())
             },
             "text" => for attrs {
-                shape = Some(ObjectData::new_text(attrs, parser, width, height).await?);
+                shape = Some(ObjectData::new_text(attrs, parser, width, height)?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });
@@ -428,7 +427,7 @@ impl ObjectData {
         Ok(ObjectShape::Polygon { points })
     }
 
-    async fn new_text<R: Reader>(
+    fn new_text<R: Reader>(
         attrs: Vec<Attribute<'_>>,
         parser: &mut Parser<R>,
         width: f32,
@@ -504,7 +503,7 @@ impl ObjectData {
         let kerning = kerning.map_or(true, |k| k == 1);
         let halign = halign.unwrap_or_default();
         let valign = valign.unwrap_or_default();
-        let contents = match parser.read_event().await.map_err(Error::XmlDecodingError)? {
+        let contents = match parser.read_event().map_err(Error::XmlDecodingError)? {
             Event::Eof => {
                 return Err(Error::PrematureEnd(
                     "XML stream ended when trying to parse text contents".to_owned(),

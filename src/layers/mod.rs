@@ -76,7 +76,7 @@ impl LayerData {
 
     // FIXME: fewer arguments?
     #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         tag: LayerTag,
@@ -119,7 +119,7 @@ impl LayerData {
 
         let (ty, properties) = match tag {
             LayerTag::Tiles => {
-                let (ty, properties) = TileLayerData::new(parser, attrs, infinite, tilesets).await?;
+                let (ty, properties) = TileLayerData::new(parser, attrs, infinite, tilesets)?;
                 (LayerDataType::Tiles(ty), properties)
             }
             LayerTag::Objects => {
@@ -131,15 +131,15 @@ impl LayerData {
                     parent(map_path).ok_or(crate::Error::PathIsNotFile)?,
                     read_from,
                     cache,
-                ).await?;
+                )?;
                 (LayerDataType::Objects(ty), properties)
             }
             LayerTag::Image => {
-                let (ty, properties) = ImageLayerData::new(parser, map_path).await?;
+                let (ty, properties) = ImageLayerData::new(parser, map_path)?;
                 (LayerDataType::Image(ty), properties)
             }
             LayerTag::Group => {
-                let (ty, properties) = Box::pin(GroupLayerData::new(
+                let (ty, properties) = GroupLayerData::new(
                     parser,
                     infinite,
                     map_path,
@@ -147,7 +147,7 @@ impl LayerData {
                     for_tileset,
                     read_from,
                     cache,
-                )).await?;
+                )?;
                 (LayerDataType::Group(ty), properties)
             }
         };

@@ -9,7 +9,7 @@ use crate::{Error, ResourceCache, ResourcePath, Result, Tileset};
 
 use super::{Parser, ReadFrom, Reader};
 
-pub async fn parse_tileset(
+pub fn parse_tileset(
     path: &ResourcePath,
     read_from: &mut impl ReadFrom,
     cache: &mut impl ResourceCache,
@@ -17,7 +17,7 @@ pub async fn parse_tileset(
     let mut reader =
         read_from
             .read_from(path)
-            .await
+            
             .map_err(|err| Error::ResourceLoadingError {
                 path: path.to_owned(),
                 err: Box::new(err),
@@ -26,7 +26,7 @@ pub async fn parse_tileset(
     loop {
         match reader
             .read_event_into(&mut buffer)
-            .await
+            
             .map_err(Error::XmlDecodingError)?
         {
             Event::Start(start) if start.local_name().into_inner() == b"tileset" => {
@@ -42,7 +42,7 @@ pub async fn parse_tileset(
                     read_from,
                     cache,
                 )
-                    .await;
+                    ;
             }
             Event::Eof => {
                 return Err(Error::PrematureEnd(

@@ -11,7 +11,17 @@ use crate::{Error, Map, ResourceCache, ResourcePath, ResourceReader, Result};
 use crate::parse::xml::{Parser, ReadFrom, Reader};
 use itertools::Itertools;
 
-pub async fn parse_map(
+pub fn print_size<T: Sized>(name: &str, _: &T) {
+    playdate::println!("{name}: {}", core::mem::size_of::<T>());
+}
+
+macro_rules! print_size {
+    ($var:expr) => {
+        crate::parse::xml::map::print_size(stringify!($var), $var)
+    };
+}
+
+pub fn parse_map(
     path: &ResourcePath,
     read_from: &mut impl ReadFrom,
     cache: &mut impl ResourceCache,
@@ -19,17 +29,18 @@ pub async fn parse_map(
     let mut reader =
         read_from
             .read_from(path)
-            .await
             .map_err(|err| Error::ResourceLoadingError {
                 path: path.to_owned(),
                 err: Box::new(err),
             })?;
+    print_size!(&reader);
     let mut buffer = Vec::new();
     loop {
-        match reader
-            .read_event_into(&mut buffer)
-            .await
-            .map_err(Error::XmlDecodingError)?
+        let next = reader
+        .read_event_into(&mut buffer)
+        .map_err(Error::XmlDecodingError)?;
+        print_size!(&next);
+        match next
         {
             Event::Start(start) if start.local_name().into_inner() == b"map" => {
                 let attributes = start
@@ -37,7 +48,8 @@ pub async fn parse_map(
                     .try_collect()
                     .map_err(|err| Error::XmlDecodingError(err.into()))?;
                 let mut parser = Parser::with_reader(reader);
-                return Map::parse_xml(&mut parser, attributes, path, read_from, cache).await;
+                print_size!(&parser);
+                return Map::parse_xml(&mut parser, attributes, path, read_from, cache);
             }
             Event::Eof => {
                 return Err(Error::PrematureEnd(

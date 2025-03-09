@@ -96,7 +96,7 @@ pub(crate) enum TileLayerData {
 }
 
 impl TileLayerData {
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         infinite: bool,
@@ -115,14 +115,14 @@ impl TileLayerData {
         parse_tag!(parser => &mut buffer, "layer", {
             "data" => for attrs {
                 if infinite {
-                    result = Self::Infinite(InfiniteTileLayerData::new(parser, attrs, tilesets).await?);
+                    result = Self::Infinite(InfiniteTileLayerData::new(parser, attrs, tilesets)?);
                 } else {
-                    result = Self::Finite(FiniteTileLayerData::new(parser, attrs, width, height, tilesets).await?);
+                    result = Self::Finite(FiniteTileLayerData::new(parser, attrs, width, height, tilesets)?);
                 }
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });

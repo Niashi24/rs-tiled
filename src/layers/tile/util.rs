@@ -11,14 +11,14 @@ use crate::{
     CsvDecodingError, Error, LayerTileData, MapTilesetGid, Result
 };
 
-pub(crate) async fn parse_data_line<R: Reader>(
+pub(crate) fn parse_data_line<R: Reader>(
     encoding: Option<&str>,
     compression: Option<&str>,
     parser: &mut Parser<R>,
     tilesets: &[MapTilesetGid],
 ) -> Result<Vec<Option<LayerTileData>>> {
     match (encoding, compression) {
-        (Some("csv"), None) => decode_csv(parser, tilesets).await,
+        (Some("csv"), None) => decode_csv(parser, tilesets),
 
         // (Some("base64"), None) => parse_base64(parser).map(|v| convert_to_tiles(&v, tilesets)),
         // (Some("base64"), Some("zlib")) => parse_base64(parser)
@@ -69,12 +69,12 @@ pub(crate) async fn parse_data_line<R: Reader>(
 //         .map_err(Error::DecompressingError)
 // }
 
-async fn decode_csv<R: Reader>(
+fn decode_csv<R: Reader>(
     parser: &mut Parser<R>,
     tilesets: &[MapTilesetGid],
 ) -> Result<Vec<Option<LayerTileData>>> {
     loop {
-        let next = parser.read_event().await.map_err(Error::XmlDecodingError)?;
+        let next = parser.read_event().map_err(Error::XmlDecodingError)?;
         match next {
             Event::Text(text) => {
                 let text = core::str::from_utf8(&text)

@@ -62,7 +62,7 @@ impl<'tileset> core::ops::Deref for Tile<'tileset> {
 }
 
 impl TileData {
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         path_relative_to: &ResourcePath,
@@ -86,11 +86,11 @@ impl TileData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "tile", {
             "image" => for attrs {
-                image = Some(Image::new(parser, attrs, path_relative_to).await?);
+                image = Some(Image::new(parser, attrs, path_relative_to)?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
             "objectgroup" => for attrs {
@@ -98,12 +98,12 @@ impl TileData {
                 // tilesets vector
                 objectgroup = Some(
                     ObjectLayerData::new(parser, attrs, None, None, path_relative_to, read_from, cache)
-                        .await?.0
+                        ?.0
                 );
                 Ok(())
             },
             "animation" => {
-                animation = Some(parse_animation(parser).await?);
+                animation = Some(parse_animation(parser)?);
                 Ok(())
             },
         });

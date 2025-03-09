@@ -40,7 +40,7 @@ impl FiniteTileLayerData {
         self.height
     }
 
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         width: u32,
@@ -55,7 +55,7 @@ impl FiniteTileLayerData {
             (encoding, compression)
         );
 
-        let tiles = parse_data_line(e, c, parser, tilesets).await?;
+        let tiles = parse_data_line(e, c, parser, tilesets)?;
 
         Ok(Self {
             width,

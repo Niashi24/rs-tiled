@@ -217,7 +217,7 @@ macro_rules! parse_tag {
     ($parser:expr, $close_tag:expr, {$($open_tag:expr => $( for $attrs:ident )? $body:block),* $(,)*}) => {
         if !$parser.last_event_was_empty {
             loop {
-                let next: quick_xml::events::Event = $parser.read_event().await.map_err(Error::XmlDecodingError)?;
+                let next: quick_xml::events::Event = $parser.read_event().map_err(Error::XmlDecodingError)?;
                 parse_tag!(@match_next next, $close_tag, { $($open_tag => $( for $attrs )? $body, )? })
             }
         }
@@ -227,7 +227,7 @@ macro_rules! parse_tag {
     ($parser:expr => $buf:expr, $close_tag:expr, {$($open_tag:expr => $( for $attrs:ident )? $body:block),* $(,)*}) => {
         if !$parser.last_event_was_empty {
             loop {
-                let next: quick_xml::events::Event = $parser.read_event_into($buf).await.map_err(Error::XmlDecodingError)?;
+                let next: quick_xml::events::Event = $parser.read_event_into($buf).map_err(Error::XmlDecodingError)?;
                 parse_tag!(@match_next next, $close_tag, { $($open_tag => $( for $attrs )? $body, )? })
             }
         }

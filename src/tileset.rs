@@ -116,7 +116,7 @@ impl Tileset {
 }
 
 impl Tileset {
-    pub(crate) async fn parse_xml_in_map<R: Reader>(
+    pub(crate) fn parse_xml_in_map<R: Reader>(
         parser: &mut Parser<R>,
         attrs: &[Attribute<'_>],
         path: &ResourcePath, // Template or Map file
@@ -124,7 +124,7 @@ impl Tileset {
         cache: &mut impl ResourceCache,
     ) -> Result<EmbeddedParseResult> {
         Tileset::parse_xml_embedded(parser, attrs, path, read_from, cache)
-            .await
+            
             .or_else(|err| {
                 if matches!(err, Error::MalformedAttributes(_)) {
                     Tileset::parse_xml_reference(attrs, path)
@@ -134,7 +134,7 @@ impl Tileset {
             })
     }
 
-    async fn parse_xml_embedded<R: Reader>(
+    fn parse_xml_embedded<R: Reader>(
         parser: &mut Parser<R>,
         attrs: &[Attribute<'_>],
         path: &ResourcePath, // Template or Map file
@@ -180,7 +180,7 @@ impl Tileset {
             read_from,
             cache,
         )
-            .await
+            
             .map(|tileset| EmbeddedParseResult {
                 first_gid,
                 result_type: EmbeddedParseResultType::Embedded { tileset },
@@ -207,7 +207,7 @@ impl Tileset {
         })
     }
 
-    pub(crate) async fn parse_external_tileset<R: Reader>(
+    pub(crate) fn parse_external_tileset<R: Reader>(
         parser: &mut Parser<R>,
         attrs: &[Attribute<'_>],
         path: &ResourcePath,
@@ -252,10 +252,10 @@ impl Tileset {
             reader,
             cache,
         )
-            .await
+            
     }
 
-    async fn finish_parsing_xml<R: Reader>(
+    fn finish_parsing_xml<R: Reader>(
         parser: &mut Parser<R>,
         container_path: ResourcePathBuf,
         prop: TilesetProperties,
@@ -271,7 +271,7 @@ impl Tileset {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "tileset", {
             "image" => for attrs {
-                image = Some(Image::new(parser, attrs, &prop.root_path).await?);
+                image = Some(Image::new(parser, attrs, &prop.root_path)?);
                 Ok(())
             },
             "tileoffset" => for attrs {
@@ -279,16 +279,16 @@ impl Tileset {
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
             "tile" => for attrs {
-                let (id, tile) = TileData::new(parser, attrs, &prop.root_path, read_from, cache).await?;
+                let (id, tile) = TileData::new(parser, attrs, &prop.root_path, read_from, cache)?;
                 tiles.insert(id, tile);
                 Ok(())
             },
             "wangset" => for attrs {
-                let set = WangSet::new(parser, attrs).await?;
+                let set = WangSet::new(parser, attrs)?;
                 wang_sets.push(set);
                 Ok(())
             },

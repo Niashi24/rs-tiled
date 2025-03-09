@@ -72,7 +72,7 @@ pub struct Image {
 }
 
 impl Image {
-    pub(crate) async fn new<'a, R: Reader>(
+    pub(crate) fn new<'a, R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         path_relative_to: impl AsRef<ResourcePath>,

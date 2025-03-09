@@ -155,8 +155,6 @@ impl<Reader: ResourceReader, Cache: ResourceCache> Loader<Reader, Cache> {
     pub fn load_tmx_map(&mut self, path: impl AsRef<ResourcePath>) -> Result<Map> {
         let mut read_from = SyncReadFrom(&mut self.reader);
         crate::parse::xml::parse_map(path.as_ref(), &mut read_from, &mut self.cache)
-            .now_or_never()
-            .expect("synchronously loading a TMX map stayed pending; this is a bug, please report it")
     }
 
     /// Parses a file hopefully containing a Tiled tileset and tries to parse it. All external files
@@ -171,8 +169,6 @@ impl<Reader: ResourceReader, Cache: ResourceCache> Loader<Reader, Cache> {
     pub fn load_tsx_tileset(&mut self, path: impl AsRef<ResourcePath>) -> Result<Tileset> {
         let mut read_from = SyncReadFrom(&mut self.reader);
         crate::parse::xml::parse_tileset(path.as_ref(), &mut read_from, &mut self.cache)
-            .now_or_never()
-            .expect("synchronously loading a TSX tileset stayed pending; this is a bug, please report it")
     }
 
     /// Returns a reference to the loader's internal [`ResourceCache`].

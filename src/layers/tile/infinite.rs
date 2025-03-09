@@ -26,7 +26,7 @@ impl core::fmt::Debug for InfiniteTileLayerData {
 }
 
 impl InfiniteTileLayerData {
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         tilesets: &[MapTilesetGid],
@@ -43,7 +43,7 @@ impl InfiniteTileLayerData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "data", {
             "chunk" => for attrs {
-                let chunk = InternalChunk::new(parser, attrs, e, c, tilesets).await?;
+                let chunk = InternalChunk::new(parser, attrs, e, c, tilesets)?;
                 for x in chunk.x..chunk.x + chunk.width as i32 {
                     for y in chunk.y..chunk.y + chunk.height as i32 {
                         let chunk_pos = ChunkData::tile_to_chunk_pos(x, y);
@@ -189,7 +189,7 @@ struct InternalChunk {
 }
 
 impl InternalChunk {
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         encoding: Option<&str>,
@@ -206,7 +206,7 @@ impl InternalChunk {
             (x, y, width, height)
         );
 
-        let tiles = parse_data_line(encoding, compression, parser, tilesets).await?;
+        let tiles = parse_data_line(encoding, compression, parser, tilesets)?;
 
         Ok(InternalChunk {
             x,

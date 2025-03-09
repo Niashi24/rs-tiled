@@ -50,7 +50,7 @@ pub struct WangSet {
 
 impl WangSet {
     /// Reads data from XML parser to create a WangSet.
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
     ) -> Result<WangSet> {
@@ -79,7 +79,7 @@ impl WangSet {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "wangset", {
             "wangcolor" => for attrs {
-                let color = WangColor::new(parser, attrs).await?;
+                let color = WangColor::new(parser, attrs)?;
                 wang_colors.push(color);
                 Ok(())
             },
@@ -89,7 +89,7 @@ impl WangSet {
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });

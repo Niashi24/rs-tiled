@@ -23,7 +23,7 @@ pub struct ObjectLayerData {
 impl ObjectLayerData {
     /// If it is known that there are no objects with tile images in it (i.e. collision data)
     /// then we can pass in [`None`] as the tilesets
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         tilesets: Option<&[MapTilesetGid]>,
@@ -44,11 +44,11 @@ impl ObjectLayerData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "objectgroup", {
             "object" => for attrs {
-                objects.push(ObjectData::new(parser, attrs, tilesets, for_tileset.as_ref().cloned(), path_relative_to, read_from, cache).await?);
+                objects.push(ObjectData::new(parser, attrs, tilesets, for_tileset.as_ref().cloned(), path_relative_to, read_from, cache)?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });

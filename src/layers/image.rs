@@ -17,7 +17,7 @@ pub struct ImageLayerData {
 }
 
 impl ImageLayerData {
-    pub(crate) async fn new<R: Reader>(
+    pub(crate) fn new<R: Reader>(
         parser: &mut Parser<R>,
         map_path: &ResourcePath,
     ) -> Result<(Self, Properties)> {
@@ -29,11 +29,11 @@ impl ImageLayerData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "imagelayer", {
             "image" => for attrs {
-                image = Some(Image::new(parser, attrs, path_relative_to).await?);
+                image = Some(Image::new(parser, attrs, path_relative_to)?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });

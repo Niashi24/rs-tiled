@@ -161,7 +161,7 @@ impl Map {
 }
 
 impl Map {
-    pub(crate) async fn parse_xml<R: Reader>(
+    pub(crate) fn parse_xml<R: Reader>(
         parser: &mut Parser<R>,
         attrs: Vec<Attribute<'_>>,
         map_path: &ResourcePath,
@@ -205,13 +205,13 @@ impl Map {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "map", {
             "tileset" => for attrs {
-                let res = Tileset::parse_xml_in_map(parser, &attrs, map_path, read_from, cache).await?;
+                let res = Tileset::parse_xml_in_map(parser, &attrs, map_path, read_from, cache)?;
                 match res.result_type {
                     EmbeddedParseResultType::ExternalReference { tileset_path } => {
                         let tileset = if let Some(ts) = cache.get_tileset(&tileset_path) {
                             ts
                         } else {
-                            let tileset = Arc::new(crate::parse::xml::parse_tileset(&tileset_path, read_from, cache).await?);
+                            let tileset = Arc::new(crate::parse::xml::parse_tileset(&tileset_path, read_from, cache)?);
                             cache.insert_tileset(tileset_path.clone(), tileset.clone());
                             tileset
                         };
@@ -235,7 +235,7 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "imagelayer" => for attrs {
@@ -249,7 +249,7 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "objectgroup" => for attrs {
@@ -263,7 +263,7 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "group" => for attrs {
@@ -277,11 +277,11 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = parse_properties(parser)?;
                 Ok(())
             },
         });

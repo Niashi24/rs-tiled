@@ -30,6 +30,7 @@ name = "ggez"
 path = "examples/ggez/main.rs"
 
 [dependencies]
+playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
 quick-xml = { git = "https://github.com/Niashi24/quick-xml.git", branch = "no-std" }
 futures = { version = "0.3.31", default-features = false, features = ["alloc"] }
 hashbrown = { version = "0.15.2" }
