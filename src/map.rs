@@ -160,7 +160,7 @@ impl Map {
         map_path: &ResourcePath,
         reader: &mut impl ResourceReader,
         cache: &mut impl ResourceCache,
-    ) -> Result<Map> {
+    ) -> Result<Box<Map>> {
         let (
             (c, infinite, user_type, user_class, stagger_axis, stagger_index, hex_side_length),
             (v, o, w, h, tw, th),
@@ -281,7 +281,7 @@ impl Map {
         // We do not need first GIDs any more
         let tilesets = tilesets.into_iter().map(|ts| ts.tileset).collect();
 
-        Ok(Map {
+        Ok(Box::new(Map {
             version: v,
             source: map_path.to_owned(),
             orientation: o,
@@ -298,7 +298,7 @@ impl Map {
             background_color: c,
             infinite,
             user_type,
-        })
+        }))
     }
 }
 

@@ -1,5 +1,7 @@
 // use std::path::Path;
 
+use alloc::boxed::Box;
+
 use crate::{DefaultResourceCache, Map, ResourceCache, ResourcePath, ResourceReader, Result, Tileset};
 
 /// A type used for loading [`Map`]s and [`Tileset`]s.
@@ -147,7 +149,7 @@ impl<Reader: ResourceReader, Cache: ResourceCache> Loader<Reader, Cache> {
     /// All intermediate objects such as map tilesets will be stored in the [internal loader cache].
     ///
     /// [internal loader cache]: Loader::cache()
-    pub fn load_tmx_map(&mut self, path: impl AsRef<ResourcePath>) -> Result<Map> {
+    pub fn load_tmx_map(&mut self, path: impl AsRef<ResourcePath>) -> Result<Box<Map>> {
         crate::parse::xml::parse_map(path.as_ref(), &mut self.reader, &mut self.cache)
     }
 

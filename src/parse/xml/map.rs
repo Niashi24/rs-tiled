@@ -13,18 +13,20 @@ pub fn parse_map(
     path: &ResourcePath,
     reader: &mut impl ResourceReader,
     cache: &mut impl ResourceCache,
-) -> Result<Map> {
-    let mut parser = 
-        Box::new(EventReader::new(
-            reader
-                .read_from(path)
-                .map_err(|err| Error::ResourceLoadingError {
-                    path: path.to_owned(),
-                    err: Box::new(err),
-                })?,
-        ));
+) -> Result<Box<Map>> {
+    // let mut parser = 
+    //     // Box::new();
+    let mut parser = EventReader::new(
+        reader
+            .read_from(path)
+            .map_err(|err| Error::ResourceLoadingError {
+                path: path.to_owned(),
+                err: Box::new(err),
+            })?,
+    );
     loop {
-        match parser.next().map_err(Error::XmlDecodingError)? {
+        let next = parser.next().map_err(Error::XmlDecodingError)?;
+        match next {
             XmlEvent::StartElement {
                 name, attributes, ..
             } => {
