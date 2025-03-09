@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
 
@@ -115,14 +116,14 @@ impl TileLayerData {
         parse_tag!(parser => &mut buffer, "layer", {
             "data" => for attrs {
                 if infinite {
-                    result = Self::Infinite(InfiniteTileLayerData::new(parser, attrs, tilesets).await?);
+                    result = Self::Infinite(Box::pin(InfiniteTileLayerData::new(parser, attrs, tilesets)).await?);
                 } else {
-                    result = Self::Finite(FiniteTileLayerData::new(parser, attrs, width, height, tilesets).await?);
+                    result = Self::Finite(Box::pin(FiniteTileLayerData::new(parser, attrs, width, height, tilesets)).await?);
                 }
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
         });

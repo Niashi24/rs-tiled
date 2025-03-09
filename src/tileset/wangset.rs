@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
@@ -79,7 +80,7 @@ impl WangSet {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "wangset", {
             "wangcolor" => for attrs {
-                let color = WangColor::new(parser, attrs).await?;
+                let color = Box::pin(WangColor::new(parser, attrs)).await?;
                 wang_colors.push(color);
                 Ok(())
             },
@@ -89,7 +90,7 @@ impl WangSet {
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
         });

@@ -1,4 +1,5 @@
 use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::convert::TryInto;
@@ -18,7 +19,7 @@ pub(crate) async fn parse_data_line<R: Reader>(
     tilesets: &[MapTilesetGid],
 ) -> Result<Vec<Option<LayerTileData>>> {
     match (encoding, compression) {
-        (Some("csv"), None) => decode_csv(parser, tilesets).await,
+        (Some("csv"), None) => Box::pin(decode_csv(parser, tilesets)).await,
 
         // (Some("base64"), None) => parse_base64(parser).map(|v| convert_to_tiles(&v, tilesets)),
         // (Some("base64"), Some("zlib")) => parse_base64(parser)
@@ -74,7 +75,7 @@ async fn decode_csv<R: Reader>(
     tilesets: &[MapTilesetGid],
 ) -> Result<Vec<Option<LayerTileData>>> {
     loop {
-        let next = parser.read_event().await.map_err(Error::XmlDecodingError)?;
+        let next = Box::pin(parser.read_event()).await.map_err(Error::XmlDecodingError)?;
         match next {
             Event::Text(text) => {
                 let text = core::str::from_utf8(&text)

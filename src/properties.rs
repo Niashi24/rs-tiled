@@ -216,8 +216,8 @@ async fn parse_properties_inner<R: Reader>(
     
     let t = t.unwrap_or("string").to_string();
     if t == "class" {
-        let properties = if has_properties_tag_next(parser).await {
-            parse_properties(parser).await?
+        let properties = if Box::pin(has_properties_tag_next(parser)).await {
+            Box::pin(parse_properties(parser)).await?
         } else {
             HashMap::new()
         };
@@ -235,7 +235,7 @@ async fn parse_properties_inner<R: Reader>(
     let v: String = match v_attr {
         Some(val) => val.to_string(),
         None => {
-            match parser.read_event().await {
+            match Box::pin(parser.read_event()).await {
                 Ok(Event::Text(text)) => {
                     let text = text.into_inner();
                     let text = core::str::from_utf8(&text)
@@ -262,7 +262,7 @@ async fn has_properties_tag_next<R: Reader>(parser: &mut Parser<R>) -> bool {
     }
     
     loop {
-        let Ok(next) = parser.read_event().await else {
+        let Ok(next) = Box::pin(parser.read_event()).await else {
             break;
         };
         

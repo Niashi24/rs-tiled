@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
 use portable_atomic_util::Arc;
@@ -32,7 +33,7 @@ impl GroupLayerData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "group", {
             "layer" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Tiles,
@@ -42,11 +43,11 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "imagelayer" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Image,
@@ -56,11 +57,11 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "objectgroup" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Objects,
@@ -70,11 +71,11 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "group" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Group,
@@ -84,11 +85,11 @@ impl GroupLayerData {
                     for_tileset.as_ref().cloned(),
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
         });

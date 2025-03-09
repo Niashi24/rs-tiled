@@ -141,23 +141,27 @@ pub enum ObjectShape {
         points: Vec<(f32, f32)>,
     },
     Point(f32, f32),
-    Text {
-        font_family: String,
-        pixel_size: usize,
-        wrap: bool,
-        color: Color,
-        bold: bool,
-        italic: bool,
-        underline: bool,
-        strikeout: bool,
-        kerning: bool,
-        halign: HorizontalAlignment,
-        valign: VerticalAlignment,
-        /// The actual text content of this object.
-        text: String,
-        width: f32,
-        height: f32,
-    },
+    Text(Box<TextObject>),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+#[allow(missing_docs)]
+pub struct TextObject {
+    pub font_family: String,
+    pub pixel_size: usize,
+    pub wrap: bool,
+    pub color: Color,
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub strikeout: bool,
+    pub kerning: bool,
+    pub halign: HorizontalAlignment,
+    pub valign: VerticalAlignment,
+    /// The actual text content of this object.
+    pub text: String,
+    pub width: f32,
+    pub height: f32,
 }
 
 /// The horizontal alignment of an [`ObjectShape::Text`].
@@ -285,10 +289,13 @@ impl ObjectData {
 
                 match &obj.shape {
                     ObjectShape::Rect { width, height }
-                    | ObjectShape::Ellipse { width, height }
-                    | ObjectShape::Text { width, height, .. } => {
+                    | ObjectShape::Ellipse { width, height } => {
                         w.get_or_insert(*width);
                         h.get_or_insert(*height);
+                    }
+                    ObjectShape::Text(text) => {
+                        w.get_or_insert(text.width);
+                        h.get_or_insert(text.height);
                     }
                     _ => {}
                 }
@@ -329,11 +336,11 @@ impl ObjectData {
                 Ok(())
             },
             "text" => for attrs {
-                shape = Some(ObjectData::new_text(attrs, parser, width, height).await?);
+                shape = Some(Box::pin(ObjectData::new_text(attrs, parser, width, height)).await?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
         });
@@ -346,36 +353,12 @@ impl ObjectData {
                     ObjectShape::Rect { .. } => ObjectShape::Rect { width, height },
                     ObjectShape::Ellipse { .. } => ObjectShape::Ellipse { width, height },
                     ObjectShape::Point(_, _) => ObjectShape::Point(x, y),
-                    ObjectShape::Text {
-                        font_family,
-                        pixel_size,
-                        wrap,
-                        color,
-                        bold,
-                        italic,
-                        underline,
-                        strikeout,
-                        kerning,
-                        halign,
-                        valign,
-                        text,
-                        width: _,
-                        height: _,
-                    } => ObjectShape::Text {
-                        font_family: font_family.clone(),
-                        pixel_size: pixel_size.clone(),
-                        wrap: wrap.clone(),
-                        color: color.clone(),
-                        bold: bold.clone(),
-                        italic: italic.clone(),
-                        underline: underline.clone(),
-                        strikeout: strikeout.clone(),
-                        kerning: kerning.clone(),
-                        halign: halign.clone(),
-                        valign: valign.clone(),
-                        text: text.clone(),
-                        width,
-                        height,
+                    ObjectShape::Text(text) => {
+                        let mut text = text.clone();
+                        text.width = width;
+                        text.height = height;
+
+                        ObjectShape::Text(text)
                     },
                     shape => shape.clone(),
                 }
@@ -504,7 +487,7 @@ impl ObjectData {
         let kerning = kerning.map_or(true, |k| k == 1);
         let halign = halign.unwrap_or_default();
         let valign = valign.unwrap_or_default();
-        let contents = match parser.read_event().await.map_err(Error::XmlDecodingError)? {
+        let contents = match Box::pin(parser.read_event()).await.map_err(Error::XmlDecodingError)? {
             Event::Eof => {
                 return Err(Error::PrematureEnd(
                     "XML stream ended when trying to parse text contents".to_owned(),
@@ -521,7 +504,7 @@ impl ObjectData {
             }
         };
 
-        Ok(ObjectShape::Text {
+        Ok(ObjectShape::Text(Box::new(TextObject {
             font_family,
             pixel_size,
             wrap,
@@ -536,7 +519,7 @@ impl ObjectData {
             text: contents,
             width,
             height,
-        })
+        })))
     }
 
     fn parse_points(s: &str) -> Result<Vec<(f32, f32)>> {

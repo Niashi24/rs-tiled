@@ -43,7 +43,7 @@ impl InfiniteTileLayerData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "data", {
             "chunk" => for attrs {
-                let chunk = InternalChunk::new(parser, attrs, e, c, tilesets).await?;
+                let chunk = Box::pin(InternalChunk::new(parser, attrs, e, c, tilesets)).await?;
                 for x in chunk.x..chunk.x + chunk.width as i32 {
                     for y in chunk.y..chunk.y + chunk.height as i32 {
                         let chunk_pos = ChunkData::tile_to_chunk_pos(x, y);
@@ -206,7 +206,7 @@ impl InternalChunk {
             (x, y, width, height)
         );
 
-        let tiles = parse_data_line(encoding, compression, parser, tilesets).await?;
+        let tiles = Box::pin(parse_data_line(encoding, compression, parser, tilesets)).await?;
 
         Ok(InternalChunk {
             x,

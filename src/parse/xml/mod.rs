@@ -1,5 +1,6 @@
 mod map;
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use no_std_io2::io::BufRead;
 pub(crate) use map::*;
@@ -90,7 +91,7 @@ impl<R> Parser<R> {
 
 impl<R: Reader> Parser<R> {
     pub(crate) async fn read_event(&mut self) -> ReadResult<Event> {
-        let event = self.reader.read_event_into(&mut self.buffer).await?;
+        let event = Box::pin(self.reader.read_event_into(&mut self.buffer)).await?;
         self.last_event_was_empty = matches!(event, Event::Empty(_));
         Ok(event)
     }
@@ -99,7 +100,7 @@ impl<R: Reader> Parser<R> {
         &mut self,
         buf: &'a mut Vec<u8>,
     ) -> ReadResult<Event<'a>> {
-        let event = self.reader.read_event_into(buf).await?;
+        let event = Box::pin(self.reader.read_event_into(buf)).await?;
         self.last_event_was_empty = matches!(event, Event::Empty(_));
         Ok(event)
     }

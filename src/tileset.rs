@@ -1,4 +1,5 @@
 use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use hashbrown::HashMap;
@@ -123,7 +124,7 @@ impl Tileset {
         read_from: &mut impl ReadFrom,
         cache: &mut impl ResourceCache,
     ) -> Result<EmbeddedParseResult> {
-        Tileset::parse_xml_embedded(parser, attrs, path, read_from, cache)
+        Box::pin(Tileset::parse_xml_embedded(parser, attrs, path, read_from, cache))
             .await
             .or_else(|err| {
                 if matches!(err, Error::MalformedAttributes(_)) {
@@ -163,7 +164,7 @@ impl Tileset {
 
         let root_path = parent(path).ok_or(Error::PathIsNotFile)?.to_owned();
 
-        Self::finish_parsing_xml(
+        Box::pin(Self::finish_parsing_xml(
             parser,
             path.to_owned(),
             TilesetProperties {
@@ -179,7 +180,7 @@ impl Tileset {
             },
             read_from,
             cache,
-        )
+        ))
             .await
             .map(|tileset| EmbeddedParseResult {
                 first_gid,
@@ -235,7 +236,7 @@ impl Tileset {
 
         let root_path = parent(path).ok_or(Error::PathIsNotFile)?.to_owned();
 
-        Self::finish_parsing_xml(
+        Box::pin(Self::finish_parsing_xml(
             parser,
             path.to_owned(),
             TilesetProperties {
@@ -251,7 +252,7 @@ impl Tileset {
             },
             reader,
             cache,
-        )
+        ))
             .await
     }
 
@@ -271,7 +272,7 @@ impl Tileset {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "tileset", {
             "image" => for attrs {
-                image = Some(Image::new(parser, attrs, &prop.root_path).await?);
+                image = Some(Box::pin(Image::new(parser, attrs, &prop.root_path)).await?);
                 Ok(())
             },
             "tileoffset" => for attrs {
@@ -279,16 +280,16 @@ impl Tileset {
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
             "tile" => for attrs {
-                let (id, tile) = TileData::new(parser, attrs, &prop.root_path, read_from, cache).await?;
+                let (id, tile) = Box::pin(TileData::new(parser, attrs, &prop.root_path, read_from, cache)).await?;
                 tiles.insert(id, tile);
                 Ok(())
             },
             "wangset" => for attrs {
-                let set = WangSet::new(parser, attrs).await?;
+                let set = Box::pin(WangSet::new(parser, attrs)).await?;
                 wang_sets.push(set);
                 Ok(())
             },

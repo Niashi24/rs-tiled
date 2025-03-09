@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
@@ -49,7 +50,7 @@ impl WangColor {
         let mut properties = HashMap::new();
         parse_tag!(parser, "wangcolor", {
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
         });

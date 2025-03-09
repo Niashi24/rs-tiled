@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use portable_atomic_util::Arc;
 use hashbrown::HashMap;
@@ -44,11 +45,11 @@ impl ObjectLayerData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "objectgroup", {
             "object" => for attrs {
-                objects.push(ObjectData::new(parser, attrs, tilesets, for_tileset.as_ref().cloned(), path_relative_to, read_from, cache).await?);
+                objects.push(Box::pin(ObjectData::new(parser, attrs, tilesets, for_tileset.as_ref().cloned(), path_relative_to, read_from, cache)).await?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
         });

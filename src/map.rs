@@ -1,6 +1,7 @@
 //! Structures related to Tiled maps.
 
 use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -205,13 +206,15 @@ impl Map {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "map", {
             "tileset" => for attrs {
-                let res = Tileset::parse_xml_in_map(parser, &attrs, map_path, read_from, cache).await?;
+                let res = Box::pin(Tileset::parse_xml_in_map(parser, &attrs, map_path, read_from, cache)).await?;
+                let res = Box::new(res);
+                
                 match res.result_type {
                     EmbeddedParseResultType::ExternalReference { tileset_path } => {
                         let tileset = if let Some(ts) = cache.get_tileset(&tileset_path) {
                             ts
                         } else {
-                            let tileset = Arc::new(crate::parse::xml::parse_tileset(&tileset_path, read_from, cache).await?);
+                            let tileset = Arc::new(Box::pin(crate::parse::xml::parse_tileset(&tileset_path, read_from, cache)).await?);
                             cache.insert_tileset(tileset_path.clone(), tileset.clone());
                             tileset
                         };
@@ -225,7 +228,7 @@ impl Map {
                 Ok(())
             },
             "layer" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Tiles,
@@ -235,11 +238,11 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "imagelayer" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Image,
@@ -249,11 +252,11 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "objectgroup" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Objects,
@@ -263,11 +266,11 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "group" => for attrs {
-                layers.push(LayerData::new(
+                layers.push(Box::pin(LayerData::new(
                     parser,
                     attrs,
                     LayerTag::Group,
@@ -277,11 +280,11 @@ impl Map {
                     None,
                     read_from,
                     cache
-                ).await?);
+                )).await?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
         });

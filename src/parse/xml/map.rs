@@ -17,8 +17,8 @@ pub async fn parse_map(
     cache: &mut impl ResourceCache,
 ) -> Result<Map> {
     let mut reader =
-        read_from
-            .read_from(path)
+        Box::pin(read_from
+            .read_from(path))
             .await
             .map_err(|err| Error::ResourceLoadingError {
                 path: path.to_owned(),
@@ -26,8 +26,8 @@ pub async fn parse_map(
             })?;
     let mut buffer = Vec::new();
     loop {
-        match reader
-            .read_event_into(&mut buffer)
+        match Box::pin(reader
+            .read_event_into(&mut buffer))
             .await
             .map_err(Error::XmlDecodingError)?
         {
@@ -37,7 +37,8 @@ pub async fn parse_map(
                     .try_collect()
                     .map_err(|err| Error::XmlDecodingError(err.into()))?;
                 let mut parser = Parser::with_reader(reader);
-                return Map::parse_xml(&mut parser, attributes, path, read_from, cache).await;
+                
+                return Box::pin(Map::parse_xml(&mut parser, attributes, path, read_from, cache)).await;
             }
             Event::Eof => {
                 return Err(Error::PrematureEnd(

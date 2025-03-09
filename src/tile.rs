@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
@@ -86,18 +87,18 @@ impl TileData {
         let mut buffer = Vec::new();
         parse_tag!(parser => &mut buffer, "tile", {
             "image" => for attrs {
-                image = Some(Image::new(parser, attrs, path_relative_to).await?);
+                image = Some(Box::pin(Image::new(parser, attrs, path_relative_to)).await?);
                 Ok(())
             },
             "properties" => {
-                properties = parse_properties(parser).await?;
+                properties = Box::pin(parse_properties(parser)).await?;
                 Ok(())
             },
             "objectgroup" => for attrs {
                 // Tile objects are not allowed within tile object groups, so we can pass None as the
                 // tilesets vector
                 objectgroup = Some(
-                    ObjectLayerData::new(parser, attrs, None, None, path_relative_to, read_from, cache)
+                    Box::pin(ObjectLayerData::new(parser, attrs, None, None, path_relative_to, read_from, cache))
                         .await?.0
                 );
                 Ok(())

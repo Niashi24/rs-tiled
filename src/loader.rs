@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 // use std::path::Path;
 use futures::FutureExt;
 
@@ -154,9 +155,11 @@ impl<Reader: ResourceReader, Cache: ResourceCache> Loader<Reader, Cache> {
     /// [internal loader cache]: Loader::cache()
     pub fn load_tmx_map(&mut self, path: impl AsRef<ResourcePath>) -> Result<Map> {
         let mut read_from = SyncReadFrom(&mut self.reader);
-        crate::parse::xml::parse_map(path.as_ref(), &mut read_from, &mut self.cache)
-            .now_or_never()
-            .expect("synchronously loading a TMX map stayed pending; this is a bug, please report it")
+        let future = crate::parse::xml::parse_map(path.as_ref(), &mut read_from, &mut self.cache);
+        Box::pin(future).now_or_never().unwrap()
+        // crate::parse::xml::parse_map(path.as_ref(), &mut read_from, &mut self.cache)
+        //     .now_or_never()
+        //     .expect("synchronously loading a TMX map stayed pending; this is a bug, please report it")
     }
 
     /// Parses a file hopefully containing a Tiled tileset and tries to parse it. All external files

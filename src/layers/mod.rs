@@ -119,11 +119,11 @@ impl LayerData {
 
         let (ty, properties) = match tag {
             LayerTag::Tiles => {
-                let (ty, properties) = TileLayerData::new(parser, attrs, infinite, tilesets).await?;
+                let (ty, properties) = Box::pin(TileLayerData::new(parser, attrs, infinite, tilesets)).await?;
                 (LayerDataType::Tiles(ty), properties)
             }
             LayerTag::Objects => {
-                let (ty, properties) = ObjectLayerData::new(
+                let (ty, properties) = Box::pin(ObjectLayerData::new(
                     parser,
                     attrs,
                     Some(tilesets),
@@ -131,11 +131,11 @@ impl LayerData {
                     parent(map_path).ok_or(crate::Error::PathIsNotFile)?,
                     read_from,
                     cache,
-                ).await?;
+                )).await?;
                 (LayerDataType::Objects(ty), properties)
             }
             LayerTag::Image => {
-                let (ty, properties) = ImageLayerData::new(parser, map_path).await?;
+                let (ty, properties) = Box::pin(ImageLayerData::new(parser, map_path)).await?;
                 (LayerDataType::Image(ty), properties)
             }
             LayerTag::Group => {

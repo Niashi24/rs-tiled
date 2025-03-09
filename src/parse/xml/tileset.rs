@@ -15,8 +15,8 @@ pub async fn parse_tileset(
     cache: &mut impl ResourceCache,
 ) -> Result<Tileset> {
     let mut reader =
-        read_from
-            .read_from(path)
+        Box::pin(read_from
+            .read_from(path))
             .await
             .map_err(|err| Error::ResourceLoadingError {
                 path: path.to_owned(),
@@ -24,8 +24,8 @@ pub async fn parse_tileset(
             })?;
     let mut buffer = Vec::new();
     loop {
-        match reader
-            .read_event_into(&mut buffer)
+        match Box::pin(reader
+            .read_event_into(&mut buffer))
             .await
             .map_err(Error::XmlDecodingError)?
         {
@@ -35,13 +35,13 @@ pub async fn parse_tileset(
                     .try_collect()
                     .map_err(|err| Error::XmlDecodingError(err.into()))?;
 
-                return Tileset::parse_external_tileset(
+                return Box::pin(Tileset::parse_external_tileset(
                     &mut Parser::with_reader(reader),
                     &attributes,
                     path,
                     read_from,
                     cache,
-                )
+                ))
                     .await;
             }
             Event::Eof => {

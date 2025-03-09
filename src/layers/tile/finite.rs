@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use quick_xml::events::attributes::Attribute;
 
@@ -55,7 +56,7 @@ impl FiniteTileLayerData {
             (encoding, compression)
         );
 
-        let tiles = parse_data_line(e, c, parser, tilesets).await?;
+        let tiles = Box::pin(parse_data_line(e, c, parser, tilesets)).await?;
 
         Ok(Self {
             width,
